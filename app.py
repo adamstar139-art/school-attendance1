@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from datetime import date
+from datetime import date, datetime, timedelta
 import io
 
 ### ---------------------------------------------------------
@@ -65,7 +65,7 @@ st.markdown(f"""
         font-weight: 600;
     }}
     
-    /* بطاقات الطلاب على الشاشات الصغيرة والكبيرة */
+    /* بطاقات الطلاب */
     .student-card {{
         text-align: right;
         direction: rtl;
@@ -159,13 +159,15 @@ header_html = """
 st.markdown(header_html, unsafe_allow_html=True)
 
 ### ---------------------------------------------------------
-### 3. قوائم المعلمين وطلاب المدرسة الكلية (167 طالباً)
+### 3. قوائم المعلمين وطلاب المدرسة الكلية
 ### ---------------------------------------------------------
 TEACHERS_LIST = [
     "محمد سامي السعيد", "علي محمد معوض", "أحمد عبد الحميد سعيد", "محمد عبد المنعم أبو كيلة",
     "هيثم رضا عطية", "عماد الدين نصر كرم", "السيد الغريب بدوي", "محمد إبراهيم عبد الرحمن",
     "أسامة أحمد سالم", "عماد بكر عارف", "إبراهيم علي العتيبي", "عيسى خالد العويس", "زيد بن علي التميمي"
 ]
+
+PERIODS_LIST = [f"الحصة {i}" for i in range(1, 8)]
 
 STUDENTS_DB = {
     "الأول المتوسط": {
@@ -360,7 +362,7 @@ STUDENTS_DB = {
 }
 
 ### ---------------------------------------------------------
-### 4. دوال توليد صفحات HTML للطباعة (للطلاب وللمعلمين)
+### 4. دوال توليد صفحات HTML للطباعة
 ### ---------------------------------------------------------
 def generate_printable_html(df_subset, report_title):
     rows_html = ""
@@ -585,7 +587,7 @@ if role == "👨‍🏫 حساب المعلم (رصد الحضور)":
     with col_s:
         section = st.selectbox("الفصل:", list(STUDENTS_DB[grade].keys()))
     with col_p:
-        period = st.selectbox("الحصة:", [f"الحصة {i}" for i in range(1, 8)])
+        period = st.selectbox("الحصة:", PERIODS_LIST)
     with col_d:
         att_date = st.date_input("التاريخ:", date.today())
 
@@ -637,7 +639,7 @@ if role == "👨‍🏫 حساب المعلم (رصد الحضور)":
         st.success(f"تم حفظ حضور فصل ({section}) بنجاح بواسطة المعلم {teacher_name}!")
 
 ### ---------------------------------------------------------
-### 8. واجهة الوكيل والمدير (الإحصائيات ورصد المعلمين والحذف)
+### 8. واجهة الوكيل والمدير (مع الفلترة الشاملة وإدارة الحذف وحفظ تقرير المعلمين)
 ### ---------------------------------------------------------
 else:
     st.subheader("👔 لوحة الوكيل والمدير (المتابعة الإدارية والطباعة)")
@@ -656,7 +658,6 @@ else:
             else:
                 st.error("كلمة المرور غير صحيحة! يرجى التأكد وإعادة المحاولة.")
     else:
-        # ✅ تم إصلاح الاستدعاء المسبب للخطأ هنا وإضافة تزويد بالعدد 2
         col_admin_top1, col_admin_top2 = st.columns(2)
         with col_admin_top2:
             if st.button("🚪 تسجيل الخروج", use_container_width=True):
@@ -667,19 +668,51 @@ else:
         
         df = pd.DataFrame(st.session_state['attendance_data'])
         
-        with st.expander("🗑️ إدارة حذف تقارير الطلاب والرصد اليومي"):
-            st.warning("⚠️ تنبيه: إجراء الحذف يمسح جميع كشوفات الحضور والغياب المرصودة للطلاب ولا يمكن التراجع عنه.")
-            confirm_delete = st.checkbox("أؤكد رغبتي في مسح جميع البيانات المرصودة حالياً")
-            if st.button("🚨 مسح وحذف كافة تقارير الطلاب اليومية", type="primary"):
+        # 🗑️ إدارة حذف تقارير الطلاب بـ 3 خيارات (يومي، أسبوعي، شهري/شامل)
+        with st.expander("🗑️ إدارة وخيارات حذف تقارير الطلاب ورصد الحضور"):
+            st.warning("⚠️ اختر نطاق الحذف المناسب، ثم أكد الرغبة في المسح.")
+            delete_scope = st.radio(
+                "اختر نوع الحذف المطلوبة:",
+                ["📅 حذف التقرير اليومي (تاريخ اليوم فقط)", "🗓️ حذف التقرير الأسبوعي (آخر 7 أيام)", "📆 حذف التقرير الشهري / السجل الكامل"],
+                horizontal=True
+            )
+            confirm_delete = st.checkbox("أؤكد رغبتي في تنفيذ عملية الحذف المختارة")
+            
+            if st.button("🚨 تنفيذ مسح وحذف التقرير", type="primary"):
                 if confirm_delete:
-                    st.session_state['attendance_data'] = []
-                    st.success("🗑️ تم حذف ومسح جميع تقارير الطلاب بنجاح!")
+                    if not df.empty and 'التاريخ' in df.columns:
+                        today_str = str(date.today())
+                        if "يومي" in delete_scope:
+                            # حذف سجلات اليوم الحالي فقط
+                            st.session_state['attendance_data'] = [r for r in st.session_state['attendance_data'] if r.get('التاريخ') != today_str]
+                            st.success(f"🗑️ تم حذف تقرير يوم ({today_str}) بنجاح!")
+                        elif "أسبوعي" in delete_scope:
+                            # حذف سجلات آخر 7 أيام
+                            seven_days_ago = date.today() - timedelta(days=7)
+                            new_data = []
+                            for r in st.session_state['attendance_data']:
+                                try:
+                                    r_date = datetime.strptime(r.get('التاريخ'), "%Y-%m-%d").date()
+                                    if r_date < seven_days_ago:
+                                        new_data.append(r)
+                                except:
+                                    pass
+                            st.session_state['attendance_data'] = new_data
+                            st.success("🗑️ تم حذف تقارير الأسبوع الماضي بنجاح!")
+                        else:
+                            # حذف جميع السجلات
+                            st.session_state['attendance_data'] = []
+                            st.success("🗑️ تم حذف ومسح كافة تقارير السجل بالكامل!")
+                    else:
+                        st.session_state['attendance_data'] = []
+                        st.success("🗑️ السجل فارغ بالفعل!")
                     st.rerun()
                 else:
                     st.error("يرجى التأشير على مربع التأكيد أولاً لتنفيذ عملية الحذف.")
         
         st.write("---")
         
+        # 🎯 القوائم المنسدلة الموحدة لصفحة المدير (الصف، الفصل، الحصة)
         st.markdown("### 🔍 فلترة وتخصيص بيانات التقارير والطباعة")
         col_f_date, col_f_grade, col_f_sec, col_f_period = st.columns(4)
         
@@ -688,20 +721,26 @@ else:
             filter_date = st.selectbox("📅 اختر التاريخ:", unique_dates)
             
         with col_f_grade:
-            unique_grades = ["الكل"] + (sorted(list(df['الصف'].unique())) if not df.empty else [])
-            filter_grade = st.selectbox("🏫 اختر الصف:", unique_grades)
+            # قائمة الصفوف الموحدة (الأول المتوسط، الثاني المتوسط، الثالث المتوسط)
+            all_grades = list(STUDENTS_DB.keys())
+            filter_grade = st.selectbox("🏫 اختر الصف الدراسي:", ["الكل"] + all_grades)
             
         with col_f_sec:
-            if not df.empty and filter_grade != "الكل":
-                unique_sections = ["الكل"] + sorted(list(df[df['الصف'] == filter_grade]['الفصل'].unique()))
+            # قائمة الفصول المتغيرة ديناميكياً عند اختيار الصف
+            if filter_grade != "الكل":
+                available_sections = list(STUDENTS_DB[filter_grade].keys())
+                filter_section = st.selectbox("🚪 اختر الفصل:", ["الكل"] + available_sections)
             else:
-                unique_sections = ["الكل"] + (sorted(list(df['الفصل'].unique())) if not df.empty else [])
-            filter_section = st.selectbox("🚪 اختر الفصل:", unique_sections)
-            
+                all_sections = []
+                for g in STUDENTS_DB:
+                    all_sections.extend(list(STUDENTS_DB[g].keys()))
+                filter_section = st.selectbox("🚪 اختر الفصل:", ["الكل"] + sorted(list(set(all_sections))))
+                
         with col_f_period:
-            unique_periods = ["الكل"] + (sorted(list(df['الحصة'].unique())) if not df.empty else [])
-            filter_period = st.selectbox("⏰ اختر الحصة:", unique_periods)
+            # قائمة الحصص الموحدة من الأولى حتى السابعة
+            filter_period = st.selectbox("⏰ اختر الحصة:", ["الكل"] + PERIODS_LIST)
 
+        # تطبيق الفلاتر
         df_filtered = df.copy() if not df.empty else pd.DataFrame()
         if not df_filtered.empty:
             if filter_date != "الكل":
@@ -721,6 +760,9 @@ else:
             "📋 السجل العام الشامل"
         ])
         
+        # ---------------------------------------------------------
+        # 1. إحصائيات وتقارير وحفظ ملفات المعلمين
+        # ---------------------------------------------------------
         with tab_teachers:
             st.markdown("### 👨‍🏫 إحصائية حضور وغياب المعلمين ورصد حالتهم اليومية")
             
@@ -769,12 +811,47 @@ else:
             
             st.write("---")
             
-            st.subheader("🖨️ طباعة تقرير حضور وغياب المعلمين")
+            # 💾 أزرار حفظ وتصدير وطباعة تقرير المعلمين
+            st.subheader("💾 أيقونات حفظ وتصدير وطباعة تقرير المعلمين")
             target_report_date = str(date.today()) if filter_date == "الكل" else filter_date
-            html_teacher_report = generate_teacher_report_html(teachers_summary_data, target_report_date)
             
-            st.download_button(
-                label="🖨️ فتح صفحة طباعة تقرير المعلمين اليومي (PDF)",
+            # بناء DataFrame لتقرير المعلمين لتسهيل الحفظ
+            df_teachers_export = pd.DataFrame([
+                {
+                    "اسم المعلم": name,
+                    "حالة الحضور اليومي": info["status"],
+                    "عدد الحصص والمرصودات": f"{info['sessions']} حصة",
+                    "التاريخ": target_report_date
+                } for name, info in teachers_summary_data.items()
+            ])
+
+            # ملف Excel لتقرير المعلمين
+            teacher_excel_buffer = io.BytesIO()
+            with pd.ExcelWriter(teacher_excel_buffer, engine='openpyxl') as writer:
+                df_teachers_export.to_excel(writer, sheet_name='تقرير المعلمين', index=False)
+            teacher_excel_data = teacher_excel_buffer.getvalue()
+            
+            col_t_down1, col_t_down2, col_t_down3 = st.columns(3)
+            
+            col_t_down1.download_button(
+                label="📊 حفظ تقرير المعلمين (Excel)",
+                data=teacher_excel_data,
+                file_name=f"تقرير_حضور_المعلمين_{target_report_date}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True
+            )
+            
+            col_t_down2.download_button(
+                label="📄 حفظ تقرير المعلمين (CSV)",
+                data=df_teachers_export.to_csv(index=False).encode('utf-8-sig'),
+                file_name=f"تقرير_حضور_المعلمين_{target_report_date}.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
+            
+            html_teacher_report = generate_teacher_report_html(teachers_summary_data, target_report_date)
+            col_t_down3.download_button(
+                label="🖨️ طباعة تقرير المعلمين (PDF)",
                 data=html_teacher_report.encode('utf-8'),
                 file_name=f"تقرير_حضور_المعلمين_{target_report_date}.html",
                 mime="text/html",
@@ -782,6 +859,9 @@ else:
                 use_container_width=True
             )
 
+        # ---------------------------------------------------------
+        # 2. كشف الطلاب الغائبين
+        # ---------------------------------------------------------
         with tab_absent:
             if not df_filtered.empty:
                 df_absent = df_filtered[df_filtered['الحالة'] == 'غائب']
@@ -803,6 +883,9 @@ else:
             else:
                 st.info("لا توجد بيانات مرصودة تطابق الفلترة المحددة.")
 
+        # ---------------------------------------------------------
+        # 3. كشف الطلاب خارج الفصل
+        # ---------------------------------------------------------
         with tab_out:
             if not df_filtered.empty:
                 df_out = df_filtered[df_filtered['الحالة'] == 'خارج الفصل']
@@ -824,6 +907,9 @@ else:
             else:
                 st.info("لا توجد بيانات مرصودة تطابق الفلترة المحددة.")
 
+        # ---------------------------------------------------------
+        # 4. كشف المتأخرين
+        # ---------------------------------------------------------
         with tab_late:
             if not df_filtered.empty:
                 df_late = df_filtered[df_filtered['الحالة'] == 'متأخر']
@@ -845,6 +931,9 @@ else:
             else:
                 st.info("لا توجد بيانات مرصودة تطابق الفلترة المحددة.")
 
+        # ---------------------------------------------------------
+        # 5. السجل العام والتصدير
+        # ---------------------------------------------------------
         with tab_all:
             if not df_filtered.empty:
                 st.markdown("### 📋 السجل العام الشامل للبيانات المفلترة")
