@@ -1,4 +1,33 @@
 import streamlit as st
+
+# 1. تهيئة حالة القفل بكلمة المرور
+if 'dev_unlocked' not in st.session_state:
+    st.session_state['dev_unlocked'] = False
+
+# 2. تطبيق كود CSS لإخفاء الأيقونات العلوية (GitHub، التعديل، والقائمة) تلقائياً
+if not st.session_state['dev_unlocked']:
+    st.markdown("""
+        <style>
+        /* إخفاء شريط الأدوات العلوي وأيقونات التعديل و GitHub بالكامل */
+        #MainMenu {visibility: hidden;}
+        header {visibility: hidden;}
+        footer {visibility: hidden;}
+        div[data-testid="stToolbar"] {visibility: hidden;}
+        div[data-testid="stHeader"] {display: none;}
+        </style>
+    """, unsafe_allow_html=True)
+
+# 3. خيار إدخال كلمة المرور للمدير لفك القفل وإظهار أدوات التعديل
+with st.sidebar.expander("🔐 فك قفل أدوات التعديل و الكود"):
+    pwd_dev = st.text_input("أدخل كلمة المرور (adam0000):", type="password", key="pwd_dev_input")
+    if st.button("فتح التعديل"):
+        if pwd_dev == "adam0000":
+            st.session_state['dev_unlocked'] = True
+            st.success("تم فك القفل بنجاح! تظهر الآن أيقونات التعديل.")
+            st.rerun()
+        else:
+            st.error("كلمة المرور غير صحيحة!")
+import streamlit as st
 import pandas as pd
 from datetime import date, datetime, timedelta
 import io
