@@ -656,7 +656,8 @@ else:
             else:
                 st.error("كلمة المرور غير صحيحة! يرجى التأكد وإعادة المحاولة.")
     else:
-        col_admin_top1, col_admin_top2 = st.columns()
+        # ✅ تم إصلاح الاستدعاء المسبب للخطأ هنا وإضافة تزويد بالعدد 2
+        col_admin_top1, col_admin_top2 = st.columns(2)
         with col_admin_top2:
             if st.button("🚪 تسجيل الخروج", use_container_width=True):
                 st.session_state['admin_authenticated'] = False
