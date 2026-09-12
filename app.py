@@ -159,10 +159,14 @@ st.markdown(f"""
 <div class="header-container">
     <div style="display: flex; justify-content: center; align-items: center;">
         {thaghar_logo_svg}
-    </div>
-    <div class="header-title">متوسطة الثغر النموذجية الأهلية - بنين</div>
-    <div class="header-subtitle">نظام رصد ومتابعة الحضور والغياب اليومي (1447 - 1448هـ)</div>
-</div>
+    # كود الترويسة الصحيح
+header_html = """
+<div class="header-title">متوسطة الثغر النموذجية الأهلية - بنين</div>
+<div class="header-subtitle">نظام رصد ومتابعة الحضور والغياب اليومي (1447 - 1448هـ)</div>
+"""
+
+# تأكد من إضافة Parameter الخاص بالـ HTML:
+st.markdown(header_html, unsafe_allow_html=True)
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
