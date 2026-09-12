@@ -9,8 +9,7 @@ import io
 # ---------------------------------------------------------
 st.set_page_config(
     page_title="نظام تحضير متوسطة الثغر النموذجية",
-    page_icon="🏫",
-    layout="wide",
+
     initial_sidebar_state="expanded"
 )
 
