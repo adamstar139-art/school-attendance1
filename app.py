@@ -4,7 +4,7 @@ from datetime import date
 import io
 
 ### ---------------------------------------------------------
-### 1. إعدادات الصفحة والتصميم الاحترافي (Custom CSS)
+### 1. إعدادات الصفحة والتصميم المتجاوب (Responsive CSS)
 ### ---------------------------------------------------------
 st.set_page_config(
     page_title="نظام تحضير متوسطة الثغر النموذجية",
@@ -13,87 +13,129 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# تنسيقات الهوية البصرية والمحاذاة لمدارس الثغر
-st.markdown("""
+# 📱 اختيار وضع العرض والتجاوب من الشريط الجانبي
+st.sidebar.title("⚙️ وضع الشاشة والتصفح")
+display_mode = st.sidebar.radio(
+    "اختر طريقة العرض المناسبة لجهازك:", 
+    ["⚡ تلقائي (متجاوب مع الشاشة)", "📱 وضع الجوال (Mobile)", "💻 وضع الكمبيوتر (Desktop)"]
+)
+
+is_mobile = (display_mode == "📱 وضع الجوال (Mobile)")
+
+# CSS التجاوب ليعمل بكفاءة على الجوال والكمبيوتر
+st.markdown(f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
     
-    html, body, [class*="css"] {
+    html, body, [class*="css"] {{
         font-family: 'Cairo', sans-serif;
         direction: rtl;
         text-align: right;
-    }
+    }}
     
-    /* تصميم الترويسة الرئيسية */
-    .header-box {
+    /* تصميم الترويسة المتجاوبة */
+    .header-box {{
         background: linear-gradient(135deg, #0F2552 0%, #1E3A8A 100%);
         color: white;
-        padding: 20px 30px;
+        padding: {'12px 15px' if is_mobile else '20px 30px'};
         border-radius: 15px;
         box-shadow: 0 4px 15px rgba(15, 37, 82, 0.2);
-        margin-bottom: 25px;
+        margin-bottom: 20px;
         display: flex;
+        flex-direction: {'column-reverse' if is_mobile else 'row'};
         align-items: center;
         justify-content: space-between;
+        text-align: {'center' if is_mobile else 'right'};
         border-bottom: 4px solid #D97706;
-    }
-    .header-text {
-        text-align: right;
-    }
-    .header-title {
-        font-size: 26px;
+        gap: 12px;
+    }}
+    .header-text {{
+        text-align: {'center' if is_mobile else 'right'};
+    }}
+    .header-title {{
+        font-size: {'19px' if is_mobile else '26px'};
         font-weight: 800;
         margin: 0;
         color: #FFFFFF;
-    }
-    .header-subtitle {
-        font-size: 16px;
+    }}
+    .header-subtitle {{
+        font-size: {'12px' if is_mobile else '16px'};
         color: #E2E8F0;
         margin-top: 5px;
         font-weight: 600;
-    }
+    }}
     
-    /* تنسيق بطاقة الطالب */
-    .student-card {
+    /* بطاقات الطلاب على الشاشات الصغيرة والكبيرة */
+    .student-card {{
         text-align: right;
         direction: rtl;
         padding: 4px 0;
-    }
-    .student-name {
-        font-size: 15px;
+    }}
+    .student-name {{
+        font-size: {'14px' if is_mobile else '15px'};
         font-weight: 700;
         color: #1E293B;
-    }
-    .student-id {
-        font-size: 12px;
+    }}
+    .student-id {{
+        font-size: {'11px' if is_mobile else '12px'};
         color: #64748B;
         font-weight: 600;
         display: block;
         margin-top: 2px;
-    }
+    }}
 
-    /* تنسيق الهيكل الإداري في القائمة الجانبية */
-    .sidebar-admin-box {
+    /* الهيكل الإداري وتوقيع المصمم في القائمة الجانبية */
+    .sidebar-admin-box {{
         background-color: #F8FAFC;
         border-right: 4px solid #0F2552;
-        border-radius: 8px;
-        padding: 12px 15px;
-        margin-top: 20px;
+        border-radius: 10px;
+        padding: 12px;
+        margin-top: 15px;
         text-align: right;
         direction: rtl;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-    }
-    .sidebar-admin-title {
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }}
+    .sidebar-admin-title {{
         color: #0F2552;
         font-weight: 800;
-        font-size: 15px;
-        margin-bottom: 8px;
-    }
-    .sidebar-admin-item {
-        font-size: 13px;
+        font-size: 14px;
+        margin-bottom: 6px;
+    }}
+    .sidebar-admin-item {{
+        font-size: 12px;
         color: #334155;
         margin: 4px 0;
-    }
+    }}
+    .designer-badge {{
+        margin-top: 12px;
+        padding: 8px 10px;
+        background: linear-gradient(135deg, #0F2552 0%, #1E3A8A 100%);
+        color: #F59E0B;
+        font-size: 14px;
+        font-weight: 800;
+        text-align: center;
+        border-radius: 8px;
+        border: 1px solid #D97706;
+        box-shadow: 0 3px 8px rgba(15, 37, 82, 0.25);
+    }}
+
+    /* Media Queries التلقائية للشاشات عند فتحها من الجوال */
+    @media (max-width: 768px) {{
+        .header-box {{
+            flex-direction: column-reverse !important;
+            text-align: center !important;
+            padding: 12px !important;
+        }}
+        .header-title {{
+            font-size: 19px !important;
+        }}
+        .header-subtitle {{
+            font-size: 12px !important;
+        }}
+        .stButton>button {{
+            width: 100% !important;
+        }}
+    }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -107,7 +149,7 @@ header_html = """
         <div class="header-subtitle">نظام رصد ومتابعة الحضور والغياب اليومي (1447 - 1448هـ)</div>
     </div>
     <div>
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 220" width="160" height="70">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 220" width="140" height="60">
             <path d="M250 20 L400 100 L250 180 L100 100 Z" fill="#D97706" />
             <text x="250" y="115" font-family="'Cairo', sans-serif" font-size="32" font-weight="bold" fill="#FFFFFF" text-anchor="middle">الثغر</text>
         </svg>
@@ -318,7 +360,7 @@ STUDENTS_DB = {
 }
 
 ### ---------------------------------------------------------
-### 4. دالة توليد صفحة HTML المجهزة للطباعة والحفظ PDF
+### 4. دوال توليد صفحات HTML للطباعة (للطلاب وللمعلمين)
 ### ---------------------------------------------------------
 def generate_printable_html(df_subset, report_title):
     rows_html = ""
@@ -354,7 +396,18 @@ def generate_printable_html(df_subset, report_title):
         th, td {{ border: 1px solid #CBD5E1; padding: 10px; text-align: center; font-size: 13px; }}
         th {{ background-color: #0F2552; color: white; font-weight: 700; }}
         tr:nth-child(even) {{ background-color: #F8FAFC; }}
-        .footer-credits {{ margin-top: 40px; border-top: 2px solid #E2E8F0; padding-top: 20px; text-align: center; font-size: 12px; color: #475569; }}
+        .footer-credits {{ margin-top: 40px; border-top: 2px solid #E2E8F0; padding-top: 20px; text-align: center; }}
+        .designer-title-print {{
+            margin-top: 15px;
+            padding: 10px 20px;
+            background-color: #0F2552;
+            color: #F59E0B;
+            font-size: 16px;
+            font-weight: 800;
+            border-radius: 8px;
+            display: inline-block;
+            border: 1px solid #D97706;
+        }}
         @media print {{
             .no-print {{ display: none; }}
         }}
@@ -362,7 +415,7 @@ def generate_printable_html(df_subset, report_title):
     </head>
     <body>
     <div class="no-print" style="text-align: center; margin-bottom: 20px;">
-        <button onclick="window.print()" style="background-color: #0F2552; color: white; padding: 12px 30px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        <button onclick="window.print()" style="background-color: #0F2552; color: white; padding: 12px 30px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer;">
             🖨️ طباعة التقرير / حفظ كـ PDF
         </button>
     </div>
@@ -371,7 +424,7 @@ def generate_printable_html(df_subset, report_title):
         <h4>{report_title}</h4>
     </div>
     <div class="info">
-        التاريخ: {date.today()} | إجمالي العدد المرصود: {len(df_subset)} طالب
+        التاريخ: {date.today()} | إجمالي السجلات: {len(df_subset)} طالب
     </div>
     <table>
         <thead>
@@ -396,9 +449,107 @@ def generate_printable_html(df_subset, report_title):
                 <td style="border: none; font-weight: bold;">مدير المدرسة: إبراهيم بن موسى التميمي</td>
                 <td style="border: none; font-weight: bold;">وكيل الشؤون التعليمية: محمد مبروك السيد</td>
                 <td style="border: none; font-weight: bold;">وكيل شؤون الطلاب: صالح بن عبدالله الدعجاني</td>
-                <td style="border: none; font-weight: bold;">تصميم الأستاذ: محمد سامي السعيد</td>
             </tr>
         </table>
+        <div class="designer-title-print">
+            ✨ تصميم الأستاذ: محمد سامي السعيد ✨
+        </div>
+    </div>
+    </body>
+    </html>
+    """
+    return html_code
+
+def generate_teacher_report_html(teacher_records, target_date):
+    days_arabic = ["الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت", "الأحد"]
+    day_name = days_arabic[date.today().weekday()]
+    
+    rows_html = ""
+    for idx, (t_name, t_info) in enumerate(teacher_records.items(), 1):
+        status = t_info['status']
+        status_color = "#DC2626" if status == "غائب" else "#CA8A04" if status == "متأخر" else "#16A34A"
+        sessions_cnt = t_info.get('sessions', 0)
+        rows_html += f"""
+        <tr>
+            <td>{idx}</td>
+            <td style="text-align: right; font-weight: bold;">{t_name}</td>
+            <td style="color: {status_color}; font-weight: bold;">{status}</td>
+            <td>{sessions_cnt} حصة/فصل</td>
+        </tr>
+        """
+
+    html_code = f"""
+    <!DOCTYPE html>
+    <html dir="rtl" lang="ar">
+    <head>
+    <meta charset="utf-8">
+    <title>تقرير حضور وغياب المعلمين</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
+        body {{ font-family: 'Cairo', sans-serif; text-align: right; padding: 20px; background-color: #FFFFFF; color: #1E293B; }}
+        .header {{ text-align: center; border-bottom: 3px solid #0F2552; padding-bottom: 12px; margin-bottom: 20px; }}
+        h2 {{ color: #0F2552; margin: 5px; font-weight: 800; font-size: 22px; }}
+        h4 {{ color: #4B5563; margin: 5px; font-weight: 700; font-size: 16px; }}
+        .info {{ background-color: #F1F5F9; padding: 12px; border-radius: 8px; margin-bottom: 20px; text-align: center; font-weight: 700; border: 1px solid #CBD5E1; }}
+        table {{ width: 100%; border-collapse: collapse; margin-top: 10px; }}
+        th, td {{ border: 1px solid #CBD5E1; padding: 10px; text-align: center; font-size: 14px; }}
+        th {{ background-color: #0F2552; color: white; font-weight: 700; }}
+        tr:nth-child(even) {{ background-color: #F8FAFC; }}
+        .footer-credits {{ margin-top: 40px; border-top: 2px solid #E2E8F0; padding-top: 20px; text-align: center; }}
+        .designer-title-print {{
+            margin-top: 15px;
+            padding: 10px 20px;
+            background-color: #0F2552;
+            color: #F59E0B;
+            font-size: 16px;
+            font-weight: 800;
+            border-radius: 8px;
+            display: inline-block;
+            border: 1px solid #D97706;
+        }}
+        @media print {{
+            .no-print {{ display: none; }}
+        }}
+    </style>
+    </head>
+    <body>
+    <div class="no-print" style="text-align: center; margin-bottom: 20px;">
+        <button onclick="window.print()" style="background-color: #0F2552; color: white; padding: 12px 30px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer;">
+            🖨️ طباعة تقرير المعلمين / حفظ كـ PDF
+        </button>
+    </div>
+    <div class="header">
+        <h2>متوسطة الثغر النموذجية الأهلية - بنين</h2>
+        <h4>تقرير بيان حضور وغياب الهيئة التعليمية (المعلمين)</h4>
+    </div>
+    <div class="info">
+        اليوم: {day_name} | التاريخ: {target_date} | إجمالي عدد المعلمين: {len(teacher_records)} معلم
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>اسم المعلم</th>
+                <th>حالة الحضور اليومي</th>
+                <th>عدد الحصص والمرصودات</th>
+            </tr>
+        </thead>
+        <tbody>
+            {rows_html}
+        </tbody>
+    </table>
+
+    <div class="footer-credits">
+        <table style="border: none; width: 100%;">
+            <tr style="background: none;">
+                <td style="border: none; font-weight: bold;">مدير المدرسة: إبراهيم بن موسى التميمي</td>
+                <td style="border: none; font-weight: bold;">وكيل الشؤون التعليمية: محمد مبروك السيد</td>
+                <td style="border: none; font-weight: bold;">وكيل شؤون الطلاب: صالح بن عبدالله الدعجاني</td>
+            </tr>
+        </table>
+        <div class="designer-title-print">
+            ✨ تصميم الأستاذ: محمد سامي السعيد ✨
+        </div>
     </div>
     </body>
     </html>
@@ -411,8 +562,11 @@ def generate_printable_html(df_subset, report_title):
 if 'attendance_data' not in st.session_state:
     st.session_state['attendance_data'] = []
 
+if 'teacher_status_db' not in st.session_state:
+    st.session_state['teacher_status_db'] = {t: "حاضر" for t in TEACHERS_LIST}
+
 ### ---------------------------------------------------------
-### 6. القائمة الجانبية المحدثة
+### 6. القائمة الجانبية
 ### ---------------------------------------------------------
 st.sidebar.title("📌 نظام المتابعة")
 role = st.sidebar.radio("اختر لوحة التحكم:", ["👨‍🏫 حساب المعلم (رصد الحضور)", "👔 حساب الوكيل والمدير (المتابعة والتصدير)"])
@@ -446,7 +600,6 @@ if role == "👨‍🏫 حساب المعلم (رصد الحضور)":
         c_num, c_name, c_status = st.columns([0.5, 3.5, 3])
         c_num.write(f"**{idx}**")
         
-        # محاذاة اسم الطالب لليمين ورقم الهوية أسفله
         c_name.markdown(
             f"""
             <div class="student-card">
@@ -484,10 +637,10 @@ if role == "👨‍🏫 حساب المعلم (رصد الحضور)":
         st.success(f"تم حفظ حضور فصل ({section}) بنجاح بواسطة المعلم {teacher_name}!")
 
 ### ---------------------------------------------------------
-### 8. واجهة الوكيل والمدير (مع نظام كلمة المرور adam112233)
+### 8. واجهة الوكيل والمدير (الإحصائيات ورصد المعلمين والحذف)
 ### ---------------------------------------------------------
 else:
-    st.subheader("👔 لوحة الوكيل والمدير (المتابعة الإدارية والتصدير)")
+    st.subheader("👔 لوحة الوكيل والمدير (المتابعة الإدارية والطباعة)")
     
     if 'admin_authenticated' not in st.session_state:
         st.session_state['admin_authenticated'] = False
@@ -503,66 +656,140 @@ else:
             else:
                 st.error("كلمة المرور غير صحيحة! يرجى التأكد وإعادة المحاولة.")
     else:
-        if st.button("🚪 تسجيل الخروج من لوحة الإدارة"):
-            st.session_state['admin_authenticated'] = False
-            st.rerun()
-            
+        col_admin_top1, col_admin_top2 = st.columns()
+        with col_admin_top2:
+            if st.button("🚪 تسجيل الخروج", use_container_width=True):
+                st.session_state['admin_authenticated'] = False
+                st.rerun()
+
+        st.write("---")
+        
         df = pd.DataFrame(st.session_state['attendance_data'])
         
-        if not df.empty:
-            m1, m2, m3, m4, m5 = st.columns(5)
-            m1.metric("إجمالي السجلات المرصودة", len(df))
-            m2.metric("🟢 الحاضرون", len(df[df['الحالة'] == 'حاضر']))
-            m3.metric("🔴 الغياب", len(df[df['الحالة'] == 'غائب']))
-            m4.metric("🟡 المتأخرون", len(df[df['الحالة'] == 'متأخر']))
-            m5.metric("🟠 خارج الفصل", len(df[df['الحالة'] == 'خارج الفصل']))
+        with st.expander("🗑️ إدارة حذف تقارير الطلاب والرصد اليومي"):
+            st.warning("⚠️ تنبيه: إجراء الحذف يمسح جميع كشوفات الحضور والغياب المرصودة للطلاب ولا يمكن التراجع عنه.")
+            confirm_delete = st.checkbox("أؤكد رغبتي في مسح جميع البيانات المرصودة حالياً")
+            if st.button("🚨 مسح وحذف كافة تقارير الطلاب اليومية", type="primary"):
+                if confirm_delete:
+                    st.session_state['attendance_data'] = []
+                    st.success("🗑️ تم حذف ومسح جميع تقارير الطلاب بنجاح!")
+                    st.rerun()
+                else:
+                    st.error("يرجى التأشير على مربع التأكيد أولاً لتنفيذ عملية الحذف.")
+        
+        st.write("---")
+        
+        st.markdown("### 🔍 فلترة وتخصيص بيانات التقارير والطباعة")
+        col_f_date, col_f_grade, col_f_sec, col_f_period = st.columns(4)
+        
+        with col_f_date:
+            unique_dates = ["الكل"] + (sorted(list(df['التاريخ'].unique())) if not df.empty else [str(date.today())])
+            filter_date = st.selectbox("📅 اختر التاريخ:", unique_dates)
             
-            st.write("---")
+        with col_f_grade:
+            unique_grades = ["الكل"] + (sorted(list(df['الصف'].unique())) if not df.empty else [])
+            filter_grade = st.selectbox("🏫 اختر الصف:", unique_grades)
             
-            st.subheader("📥 تصدير التقرير النهائي (Excel / CSV)")
+        with col_f_sec:
+            if not df.empty and filter_grade != "الكل":
+                unique_sections = ["الكل"] + sorted(list(df[df['الصف'] == filter_grade]['الفصل'].unique()))
+            else:
+                unique_sections = ["الكل"] + (sorted(list(df['الفصل'].unique())) if not df.empty else [])
+            filter_section = st.selectbox("🚪 اختر الفصل:", unique_sections)
             
-            excel_buffer = io.BytesIO()
-            with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
-                df.to_excel(writer, sheet_name='السجل العام اليومي', index=False)
-                df[df['الحالة'] == 'غائب'].to_excel(writer, sheet_name='كشف الغياب', index=False)
-                df[df['الحالة'] == 'خارج الفصل'].to_excel(writer, sheet_name='خارج الفصل', index=False)
-                df[df['الحالة'] == 'متأخر'].to_excel(writer, sheet_name='كشف المتأخرين', index=False)
+        with col_f_period:
+            unique_periods = ["الكل"] + (sorted(list(df['الحصة'].unique())) if not df.empty else [])
+            filter_period = st.selectbox("⏰ اختر الحصة:", unique_periods)
+
+        df_filtered = df.copy() if not df.empty else pd.DataFrame()
+        if not df_filtered.empty:
+            if filter_date != "الكل":
+                df_filtered = df_filtered[df_filtered['التاريخ'] == filter_date]
+            if filter_grade != "الكل":
+                df_filtered = df_filtered[df_filtered['الصف'] == filter_grade]
+            if filter_section != "الكل":
+                df_filtered = df_filtered[df_filtered['الفصل'] == filter_section]
+            if filter_period != "الكل":
+                df_filtered = df_filtered[df_filtered['الحصة'] == filter_period]
+
+        tab_teachers, tab_absent, tab_out, tab_late, tab_all = st.tabs([
+            "👨‍🏫 إحصائية وتقارير المعلمين",
+            "🔴 كشف الطلاب الغائبين", 
+            "🟠 كشف الطلاب خارج الفصل", 
+            "🟡 كشف المتأخرين عن الحصة", 
+            "📋 السجل العام الشامل"
+        ])
+        
+        with tab_teachers:
+            st.markdown("### 👨‍🏫 إحصائية حضور وغياب المعلمين ورصد حالتهم اليومية")
+            
+            teacher_session_counts = {}
+            if not df.empty:
+                t_grouped = df.groupby('اسم المعلم')['الحصة'].nunique()
+                teacher_session_counts = t_grouped.to_dict()
+
+            st.markdown("#### ⚙️ رصد وتحديد حالة المعلمين اليومية:")
+            
+            teachers_summary_data = {}
+            
+            for t_name in TEACHERS_LIST:
+                c_name_t, c_status_t, c_info_t = st.columns([2.5, 3, 2.5])
+                c_name_t.markdown(f"**{t_name}**")
                 
-            excel_data = excel_buffer.getvalue()
-            
-            col_down1, col_down2 = st.columns(2)
-            col_down1.download_button(
-                label="📊 تحميل التقرير اليومي الشامل (Excel)",
-                data=excel_data,
-                file_name=f"تقرير_حضور_متوسطة_الثغر_{date.today()}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True
-            )
-            
-            col_down2.download_button(
-                label="📄 تحميل التقرير كملف CSV (للحفظ والطباعة)",
-                data=df.to_csv(index=False).encode('utf-8-sig'),
-                file_name=f"تقرير_حضور_متوسطة_الثغر_{date.today()}.csv",
-                mime="text/csv",
-                use_container_width=True
-            )
+                cur_status = st.session_state['teacher_status_db'].get(t_name, "حاضر")
+                new_status = c_status_t.radio(
+                    f"حالة المعلم {t_name}:",
+                    ["حاضر", "غائب", "متأخر"],
+                    index=["حاضر", "غائب", "متأخر"].index(cur_status),
+                    key=f"t_status_{t_name}",
+                    horizontal=True
+                )
+                st.session_state['teacher_status_db'][t_name] = new_status
+                
+                sessions_done = teacher_session_counts.get(t_name, 0)
+                c_info_t.write(f"الحصص المرصودة: `{sessions_done} حصة`")
+                
+                teachers_summary_data[t_name] = {
+                    "status": new_status,
+                    "sessions": sessions_done
+                }
 
             st.write("---")
             
-            tab_absent, tab_out, tab_late, tab_all = st.tabs([
-                "🔴 كشف الطلاب الغائبين (بالأسماء)", 
-                "🟠 كشف الطلاب خارج الفصل (بالأسماء)", 
-                "🟡 كشف المتأخرين عن الحصة", 
-                "📋 السجل العام الشامل"
-            ])
+            t_present_cnt = sum(1 for v in st.session_state['teacher_status_db'].values() if v == "حاضر")
+            t_absent_cnt = sum(1 for v in st.session_state['teacher_status_db'].values() if v == "غائب")
+            t_late_cnt = sum(1 for v in st.session_state['teacher_status_db'].values() if v == "متأخر")
             
-            with tab_absent:
-                df_absent = df[df['الحالة'] == 'غائب']
-                st.markdown(f"### 🔴 قائمة أسماء الطلاب الغائبين اليوم (`العدد: {len(df_absent)} طالب`)")
+            tm1, tm2, tm3, tm4 = st.columns(4)
+            tm1.metric("إجمالي كادر المعلمين", len(TEACHERS_LIST))
+            tm2.metric("🟢 المعلمون الحاضرون", t_present_cnt)
+            tm3.metric("🔴 المعلمون الغائبون", t_absent_cnt)
+            tm4.metric("🟡 المعلمون المتأخرون", t_late_cnt)
+            
+            st.write("---")
+            
+            st.subheader("🖨️ طباعة تقرير حضور وغياب المعلمين")
+            target_report_date = str(date.today()) if filter_date == "الكل" else filter_date
+            html_teacher_report = generate_teacher_report_html(teachers_summary_data, target_report_date)
+            
+            st.download_button(
+                label="🖨️ فتح صفحة طباعة تقرير المعلمين اليومي (PDF)",
+                data=html_teacher_report.encode('utf-8'),
+                file_name=f"تقرير_حضور_المعلمين_{target_report_date}.html",
+                mime="text/html",
+                key="btn_print_teachers",
+                use_container_width=True
+            )
+
+        with tab_absent:
+            if not df_filtered.empty:
+                df_absent = df_filtered[df_filtered['الحالة'] == 'غائب']
+                st.markdown(f"### 🔴 قائمة أسماء الطلاب الغائبين (`العدد: {len(df_absent)} طالب`)")
                 if not df_absent.empty:
                     st.dataframe(df_absent[['اسم الطالب', 'رقم الطالب', 'الصف', 'الفصل', 'الحصة', 'اسم المعلم', 'التاريخ']], use_container_width=True)
                     
-                    html_absent = generate_printable_html(df_absent, "كشف أسماء الطلاب الغائبين")
+                    title_suffix = f" - (الصف: {filter_grade} | الفصل: {filter_section} | الحصة: {filter_period} | التاريخ: {filter_date})"
+                    html_absent = generate_printable_html(df_absent, f"كشف أسماء الطلاب الغائبين {title_suffix}")
                     st.download_button(
                         label="🖨️ فتح صفحة طباعة كشف الغائبين (PDF)",
                         data=html_absent.encode('utf-8'),
@@ -571,15 +798,19 @@ else:
                         key="btn_print_absent"
                     )
                 else:
-                    st.success("🎉 لا يوجد طلاب غائبون مسجلون اليوم!")
+                    st.success("🎉 لا يوجد طلاب غائبون ضمن خيارات التصفية المحددة!")
+            else:
+                st.info("لا توجد بيانات مرصودة تطابق الفلترة المحددة.")
 
-            with tab_out:
-                df_out = df[df['الحالة'] == 'خارج الفصل']
-                st.markdown(f"### 🟠 قائمة أسماء الطلاب المسجلين خارج الفصل (`العدد: {len(df_out)} طالب`)")
+        with tab_out:
+            if not df_filtered.empty:
+                df_out = df_filtered[df_filtered['الحالة'] == 'خارج الفصل']
+                st.markdown(f"### 🟠 قائمة أسماء الطلاب خارج الفصل (`العدد: {len(df_out)} طالب`)")
                 if not df_out.empty:
                     st.dataframe(df_out[['اسم الطالب', 'رقم الطالب', 'الصف', 'الفصل', 'الحصة', 'اسم المعلم', 'التاريخ']], use_container_width=True)
                     
-                    html_out = generate_printable_html(df_out, "كشف أسماء الطلاب المتواجدين خارج الفصل")
+                    title_suffix = f" - (الصف: {filter_grade} | الفصل: {filter_section} | الحصة: {filter_period} | التاريخ: {filter_date})"
+                    html_out = generate_printable_html(df_out, f"كشف الطلاب خارج الفصل {title_suffix}")
                     st.download_button(
                         label="🖨️ فتح صفحة طباعة كشف خارج الفصل (PDF)",
                         data=html_out.encode('utf-8'),
@@ -588,15 +819,19 @@ else:
                         key="btn_print_out"
                     )
                 else:
-                    st.success("✅ لا يوجد طلاب مسجلون خارج الفصل حالياً!")
+                    st.success("✅ لا يوجد طلاب خارج الفصل ضمن خيارات التصفية المحددة!")
+            else:
+                st.info("لا توجد بيانات مرصودة تطابق الفلترة المحددة.")
 
-            with tab_late:
-                df_late = df[df['الحالة'] == 'متأخر']
-                st.markdown(f"### 🟡 قائمة أسماء الطلاب المتأخرين عن الحصة (`العدد: {len(df_late)} طالب`)")
+        with tab_late:
+            if not df_filtered.empty:
+                df_late = df_filtered[df_filtered['الحالة'] == 'متأخر']
+                st.markdown(f"### 🟡 قائمة أسماء الطلاب المتأخرين (`العدد: {len(df_late)} طالب`)")
                 if not df_late.empty:
                     st.dataframe(df_late[['اسم الطالب', 'رقم الطالب', 'الصف', 'الفصل', 'الحصة', 'اسم المعلم', 'التاريخ']], use_container_width=True)
                     
-                    html_late = generate_printable_html(df_late, "كشف أسماء الطلاب المتأخرين عن الحصة")
+                    title_suffix = f" - (الصف: {filter_grade} | الفصل: {filter_section} | الحصة: {filter_period} | التاريخ: {filter_date})"
+                    html_late = generate_printable_html(df_late, f"كشف الطلاب المتأخرين {title_suffix}")
                     st.download_button(
                         label="🖨️ فتح صفحة طباعة كشف المتأخرين (PDF)",
                         data=html_late.encode('utf-8'),
@@ -605,13 +840,43 @@ else:
                         key="btn_print_late"
                     )
                 else:
-                    st.success("✨ لا يوجد طلاب متأخرون مرصودون اليوم!")
+                    st.success("✨ لا يوجد طلاب متأخرون ضمن خيارات التصفية المحددة!")
+            else:
+                st.info("لا توجد بيانات مرصودة تطابق الفلترة المحددة.")
 
-            with tab_all:
-                st.markdown("### 📋 السجل اليومي العام للرصد")
-                st.dataframe(df, use_container_width=True)
+        with tab_all:
+            if not df_filtered.empty:
+                st.markdown("### 📋 السجل العام الشامل للبيانات المفلترة")
+                st.dataframe(df_filtered, use_container_width=True)
                 
-                html_full = generate_printable_html(df, "التقرير اليومي الشامل لحضور وغياب الطلاب")
+                excel_buffer = io.BytesIO()
+                with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
+                    df_filtered.to_excel(writer, sheet_name='السجل المفلتر', index=False)
+                    df_filtered[df_filtered['الحالة'] == 'غائب'].to_excel(writer, sheet_name='كشف الغياب', index=False)
+                    df_filtered[df_filtered['الحالة'] == 'خارج الفصل'].to_excel(writer, sheet_name='خارج الفصل', index=False)
+                    df_filtered[df_filtered['الحالة'] == 'متأخر'].to_excel(writer, sheet_name='كشف المتأخرين', index=False)
+                    
+                excel_data = excel_buffer.getvalue()
+                
+                col_down1, col_down2 = st.columns(2)
+                col_down1.download_button(
+                    label="📊 تحميل التقرير المفلتر (Excel)",
+                    data=excel_data,
+                    file_name=f"تقرير_حضور_مفلتر_{date.today()}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True
+                )
+                
+                col_down2.download_button(
+                    label="📄 تحميل التقرير كملف CSV",
+                    data=df_filtered.to_csv(index=False).encode('utf-8-sig'),
+                    file_name=f"تقرير_حضور_مفلتر_{date.today()}.csv",
+                    mime="text/csv",
+                    use_container_width=True
+                )
+                
+                title_suffix = f" - (الصف: {filter_grade} | الفصل: {filter_section} | الحصة: {filter_period} | التاريخ: {filter_date})"
+                html_full = generate_printable_html(df_filtered, f"التقرير الشامل لحضور وغياب الطلاب {title_suffix}")
                 st.download_button(
                     label="🖨️ فتح صفحة طباعة السجل العام (PDF)",
                     data=html_full.encode('utf-8'),
@@ -619,12 +884,11 @@ else:
                     mime="text/html",
                     key="btn_print_full"
                 )
-                
-        else:
-            st.info("لا توجد بيانات حضور مرصودة اليوم حتى الآن. سيتم عرض الإحصائيات وأزرار التصدير والطباعة فور بدء المعلمين في رصد الحضور.")
+            else:
+                st.info("لا توجد بيانات حضور مرصودة في السجل اليومي.")
 
 ### ---------------------------------------------------------
-### 9. الهيكل الإداري المحاذى لليمين في الشريط الجانبي
+### 9. الهيكل الإداري وتوقيع المصمم البارز في الشريط الجانبي
 ### ---------------------------------------------------------
 st.sidebar.markdown("""
 <div class="sidebar-admin-box">
@@ -632,7 +896,8 @@ st.sidebar.markdown("""
     <div class="sidebar-admin-item"><b>مدير المدرسة:</b> إبراهيم بن موسى التميمي</div>
     <div class="sidebar-admin-item"><b>وكيل الشؤون التعليمية:</b> محمد مبروك السيد</div>
     <div class="sidebar-admin-item"><b>وكيل شؤون الطلاب:</b> صالح بن عبدالله الدعجاني</div>
-    <hr style="margin: 8px 0; border: 0; border-top: 1px solid #E2E8F0;">
-    <div class="sidebar-admin-item" style="color: #64748B; font-size: 11px;">تصميم الأستاذ: محمد سامي السعيد</div>
+    <div class="designer-badge">
+        ✨ تصميم الأستاذ: محمد سامي السعيد ✨
+    </div>
 </div>
 """, unsafe_allow_html=True)
