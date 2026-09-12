@@ -9,7 +9,8 @@ import io
 # ---------------------------------------------------------
 st.set_page_config(
     page_title="نظام تحضير متوسطة الثغر النموذجية",
-
+    page_icon="🏫",
+    layout="wide",
     initial_sidebar_state="expanded"
 )
 
@@ -159,14 +160,10 @@ st.markdown(f"""
 <div class="header-container">
     <div style="display: flex; justify-content: center; align-items: center;">
         {thaghar_logo_svg}
-    # كود الترويسة الصحيح
-header_html = """
-<div class="header-title">متوسطة الثغر النموذجية الأهلية - بنين</div>
-<div class="header-subtitle">نظام رصد ومتابعة الحضور والغياب اليومي (1447 - 1448هـ)</div>
-"""
-
-# تأكد من إضافة Parameter الخاص بالـ HTML:
-st.markdown(header_html, unsafe_allow_html=True)
+    </div>
+    <div class="header-title">متوسطة الثغر النموذجية الأهلية - بنين</div>
+    <div class="header-subtitle">نظام رصد ومتابعة الحضور والغياب اليومي (1447 - 1448هـ)</div>
+</div>
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
