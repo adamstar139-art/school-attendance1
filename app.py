@@ -373,7 +373,7 @@ STUDENTS_DB = {
 }
 
 ### ---------------------------------------------------------
-### 5. دوال توليد صفحات HTML للطباعة (للطلاب وللمعلمين)
+### 5. دوال توليد صفحات HTML للطباعة (للطلاب وللمعلمين مع عدد الغياب والتأخر)
 ### ---------------------------------------------------------
 def generate_printable_html(df_subset, report_title):
     rows_html = ""
@@ -473,20 +473,24 @@ def generate_printable_html(df_subset, report_title):
     """
     return html_code
 
-def generate_teacher_range_report_html(teacher_records_list, start_d, end_d, cal_system):
+def generate_teacher_range_report_html(teacher_summary_list, start_d, end_d, cal_system):
     rows_html = ""
-    for idx, rec in enumerate(teacher_records_list, 1):
-        status = rec['الحالة']
-        status_color = "#DC2626" if status == "غائب" else "#CA8A04" if status == "متأخر" else "#16A34A"
-        date_display = rec['التاريخ_الهجري'] if cal_system == "هجري" else rec['التاريخ']
+    for idx, rec in enumerate(teacher_summary_list, 1):
+        absent_cnt = rec.get('عدد مرات الغياب', 0)
+        late_cnt = rec.get('عدد مرات التأخر', 0)
+        present_cnt = rec.get('عدد أيام الحضور', 0)
+        
+        absent_style = f"color: #DC2626; font-weight: bold;" if absent_cnt > 0 else "color: #16A34A;"
+        late_style = f"color: #CA8A04; font-weight: bold;" if late_cnt > 0 else "color: #16A34A;"
+        
         rows_html += f"""
         <tr>
             <td>{idx}</td>
             <td style="text-align: right; font-weight: bold;">{rec['اسم المعلم']}</td>
-            <td>{date_display}</td>
-            <td style="color: {status_color}; font-weight: bold;">{status}</td>
-            <td>{rec.get('الحصص المرصودة', 0)} حصة/فصل</td>
-            <td>{rec.get('ملاحظات', '-')}</td>
+            <td style="color: #16A34A; font-weight: bold;">{present_cnt} يوم</td>
+            <td style="{absent_style}">{absent_cnt} مرة</td>
+            <td style="{late_style}">{late_cnt} مرة</td>
+            <td>{rec.get('إجمالي الحصص المرصودة', 0)} حصة</td>
         </tr>
         """
 
@@ -535,20 +539,20 @@ def generate_teacher_range_report_html(teacher_records_list, start_d, end_d, cal
     </div>
     <div class="header">
         <h2>متوسطة الثغر النموذجية الأهلية - بنين</h2>
-        <h4>تقرير حضور وغياب المعلمين للفترة التفصيلية ({cal_system})</h4>
+        <h4>تقرير ملخص إحصائيات المعلمين بالفترة ({cal_system})</h4>
     </div>
     <div class="info">
-        الفترة من: {start_disp} إلى: {end_disp} | إجمالي السجلات: {len(teacher_records_list)} سجل
+        الفترة من: {start_disp} إلى: {end_disp} | إجمالي عدد المعلمين: {len(teacher_summary_list)} معلم
     </div>
     <table>
         <thead>
             <tr>
                 <th>#</th>
                 <th>اسم المعلم</th>
-                <th>التاريخ ({cal_system})</th>
-                <th>حالة الحضور اليومي</th>
-                <th>الحصص والمرصودات</th>
-                <th>ملاحظات والتعديلات</th>
+                <th>أيام الحضور</th>
+                <th>عدد مرات الغياب</th>
+                <th>عدد مرات التأخر</th>
+                <th>إجمالي الحصص والمرصودات</th>
             </tr>
         </thead>
         <tbody>
@@ -593,6 +597,9 @@ if 'teacher_daily_logs' not in st.session_state:
 
 if 'teacher_status_db' not in st.session_state:
     st.session_state['teacher_status_db'] = {t: "حاضر" for t in TEACHERS_LIST}
+
+if 'search_teacher_started' not in st.session_state:
+    st.session_state['search_teacher_started'] = False
 
 ### ---------------------------------------------------------
 ### 7. القائمة الجانبية
@@ -799,7 +806,7 @@ else:
         ])
         
         # ---------------------------------------------------------
-        # 1. إحصائيات المعلمين وزر (حفظ وإرسال كشف حضور المعلمين)
+        # 1. إحصائيات المعلمين وزر بدء التقرير وعرض عدد مرات الغياب والتأخر
         # ---------------------------------------------------------
         with tab_teachers:
             st.markdown("### 👨‍🏫 إحصائية وحالة حضور وغياب كادر المعلمين")
@@ -837,7 +844,7 @@ else:
 
             st.write("---")
             
-            # 💾 أيقونة وزر حفظ وإرسال كشف حضور المعلمين المطلوبة
+            # 💾 زر حفظ وإرسال كشف حضور المعلمين
             if st.button("💾 حفظ وإرسال كشف حضور المعلمين", type="primary", use_container_width=True, key="btn_save_send_teachers"):
                 today_str = str(date.today())
                 st.session_state['teacher_daily_logs'] = [r for r in st.session_state['teacher_daily_logs'] if r.get('التاريخ') != today_str]
@@ -902,77 +909,94 @@ else:
 
             st.write("---")
             
-            # 🖨️ قسم طباعة وتصدير تقرير المعلمين للفترة الزمنية (من / إلى) [هجري / ميلادي]
-            st.markdown("### 🖨️ طباعة وتصدير تقرير المعلمين حسب الفترة الزمنية (هجري / ميلادي)")
+            # 🖨️ قسم اختيار الفترة الزمنية مع زر (▶️ بدء) وحساب عدد الغياب والتأخر
+            st.markdown("### 🖨️ تقرير ملخص إحصائيات المعلمين للفترة (مع عدد مرات الغياب والتأخر)")
             
-            col_r1, col_r2, col_r3 = st.columns(3)
+            col_r1, col_r2, col_r3, col_r4 = st.columns([2.5, 2.5, 2.5, 2.5])
             with col_r1:
                 start_report_date = st.date_input("من تاريخ:", date.today() - timedelta(days=7), key="rep_start_date")
             with col_r2:
                 end_report_date = st.date_input("إلى تاريخ:", date.today(), key="rep_end_date")
             with col_r3:
                 calendar_type = st.radio("نظام التاريخ للتقرير:", ["ميلادي 📅", "هجري 🌙"], horizontal=True)
+            with col_r4:
+                st.write("")
+                st.write("")
+                btn_start_search = st.button("▶️ بدء عرض التقرير", type="primary", use_container_width=True)
 
-            filtered_teacher_logs = []
-            for r in st.session_state['teacher_daily_logs']:
-                try:
-                    r_d = datetime.strptime(r['التاريخ'], "%Y-%m-%d").date()
-                    if start_report_date <= r_d <= end_report_date:
-                        filtered_teacher_logs.append(r)
-                except:
-                    pass
+            if btn_start_search:
+                st.session_state['search_teacher_started'] = True
 
-            if not filtered_teacher_logs:
-                curr = start_report_date
-                while curr <= end_report_date:
-                    for t in TEACHERS_LIST:
-                        filtered_teacher_logs.append({
-                            "التاريخ": str(curr),
-                            "التاريخ_الهجري": gregorian_to_hijri_approx(curr),
-                            "اسم المعلم": t,
-                            "الحالة": "حاضر",
-                            "الحصص المرصودة": teacher_session_counts.get(t, 0),
-                            "ملاحظات": "-"
-                        })
-                    curr += timedelta(days=1)
+            # عرض التقرير فقط عند النقر على أيقونة/زر بدء
+            if st.session_state.get('search_teacher_started', False):
+                # حساب الإحصائيات (أيام الحضور، مرات الغياب، مرات التأخر) لكل معلم
+                teacher_summary_list = []
+                
+                for t in TEACHERS_LIST:
+                    t_logs = []
+                    for r in st.session_state['teacher_daily_logs']:
+                        if r['اسم المعلم'] == t:
+                            try:
+                                r_d = datetime.strptime(r['التاريخ'], "%Y-%m-%d").date()
+                                if start_report_date <= r_d <= end_report_date:
+                                    t_logs.append(r)
+                            except:
+                                pass
+                    
+                    p_cnt = sum(1 for x in t_logs if x['الحالة'] == "حاضر")
+                    a_cnt = sum(1 for x in t_logs if x['الحالة'] == "غائب")
+                    l_cnt = sum(1 for x in t_logs if x['الحالة'] == "متأخر")
+                    tot_sess = sum(x.get('الحصص المرصودة', 0) for x in t_logs)
+                    
+                    teacher_summary_list.append({
+                        "اسم المعلم": t,
+                        "عدد أيام الحضور": p_cnt,
+                        "عدد مرات الغياب": a_cnt,
+                        "عدد مرات التأخر": l_cnt,
+                        "إجمالي الحصص المرصودة": tot_sess
+                    })
 
-            st.dataframe(pd.DataFrame(filtered_teacher_logs), use_container_width=True)
+                df_t_summary = pd.DataFrame(teacher_summary_list)
+                
+                st.markdown(f"#### 📊 بيانات إحصائية المعلمين من `{start_report_date}` إلى `{end_report_date}`:")
+                st.dataframe(df_t_summary, use_container_width=True)
 
-            cal_sys_name = "هجري" if "هجري" in calendar_type else "ميلادي"
-            html_t_range = generate_teacher_range_report_html(filtered_teacher_logs, start_report_date, end_report_date, cal_sys_name)
-            
-            df_t_exp = pd.DataFrame(filtered_teacher_logs)
-            teacher_range_excel_buffer = io.BytesIO()
-            with pd.ExcelWriter(teacher_range_excel_buffer, engine='openpyxl') as writer:
-                df_t_exp.to_excel(writer, sheet_name='تقرير المعلمين للفترة', index=False)
-            t_excel_data = teacher_range_excel_buffer.getvalue()
+                cal_sys_name = "هجري" if "هجري" in calendar_type else "ميلادي"
+                html_t_range = generate_teacher_range_report_html(teacher_summary_list, start_report_date, end_report_date, cal_sys_name)
+                
+                teacher_range_excel_buffer = io.BytesIO()
+                with pd.ExcelWriter(teacher_range_excel_buffer, engine='openpyxl') as writer:
+                    df_t_summary.to_excel(writer, sheet_name='ملخص إحصائيات المعلمين', index=False)
+                t_excel_data = teacher_range_excel_buffer.getvalue()
 
-            col_down_t1, col_down_t2, col_down_t3 = st.columns(3)
-            
-            col_down_t1.download_button(
-                label="📊 حفظ تقرير الفترة (Excel)",
-                data=t_excel_data,
-                file_name=f"تقرير_المعلمين_من_{start_report_date}_إلى_{end_report_date}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True
-            )
-            
-            col_down_t2.download_button(
-                label="📄 حفظ تقرير الفترة (CSV)",
-                data=df_t_exp.to_csv(index=False).encode('utf-8-sig'),
-                file_name=f"تقرير_المعلمين_من_{start_report_date}_إلى_{end_report_date}.csv",
-                mime="text/csv",
-                use_container_width=True
-            )
-            
-            col_down_t3.download_button(
-                label="🖨️ طباعة تقرير المعلمين للفترة (PDF)",
-                data=html_t_range.encode('utf-8'),
-                file_name=f"تقرير_المعلمين_{cal_sys_name}_{start_report_date}_إلى_{end_report_date}.html",
-                mime="text/html",
-                key="btn_print_t_range",
-                use_container_width=True
-            )
+                col_down_t1, col_down_t2, col_down_t3 = st.columns(3)
+                
+                col_down_t1.download_button(
+                    label="📊 حفظ تقرير الفترة (Excel)",
+                    data=t_excel_data,
+                    file_name=f"تقرير_إحصائيات_المعلمين_من_{start_report_date}_إلى_{end_report_date}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True
+                )
+                
+                col_down_t2.download_button(
+                    label="📄 حفظ تقرير الفترة (CSV)",
+                    data=df_t_summary.to_csv(index=False).encode('utf-8-sig'),
+                    file_name=f"تقرير_إحصائيات_المعلمين_من_{start_report_date}_إلى_{end_report_date}.csv",
+                    mime="text/csv",
+                    use_container_width=True
+                )
+                
+                col_down_t3.download_button(
+                    label="🖨️ طباعة تقرير المعلمين للفترة (PDF)",
+                    data=html_t_range.encode('utf-8'),
+                    file_name=f"تقرير_إحصائيات_المعلمين_{cal_sys_name}_{start_report_date}_إلى_{end_report_date}.html",
+                    mime="text/html",
+                    key="btn_print_t_range",
+                    use_container_width=True
+                )
+            else:
+                st.info("👈 اختر نطاق التاريخ المطلوبة (من / إلى)، ثم انقر على زر **`▶️ بدء عرض التقرير`** للبدء وعرض البيانات.")
 
         # ---------------------------------------------------------
         # 2. كشف الطلاب الغائبين
