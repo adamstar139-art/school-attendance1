@@ -1,12 +1,11 @@
-
 import streamlit as st
 import pandas as pd
 from datetime import date
 import io
 
-# ---------------------------------------------------------
-# 1. إعدادات الصفحة والتصميم الاحترافي (Custom CSS)
-# ---------------------------------------------------------
+### ---------------------------------------------------------
+### 1. إعدادات الصفحة والتصميم الاحترافي (Custom CSS)
+### ---------------------------------------------------------
 st.set_page_config(
     page_title="نظام تحضير متوسطة الثغر النموذجية",
     page_icon="🏫",
@@ -14,7 +13,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# تنسيقات الهوية البصرية لمدارس الثغر
+# تنسيقات الهوية البصرية والمحاذاة لمدارس الثغر
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
@@ -25,164 +24,105 @@ st.markdown("""
         text-align: right;
     }
     
-    .stApp {
-        background-color: #F8FAFC;
-    }
-    
-    /* الترويسة العلوية الرسمية */
-    .header-container {
-        background: linear-gradient(135deg, #0F2552 0%, #1E3A8A 60%, #2563EB 100%);
+    /* تصميم الترويسة الرئيسية */
+    .header-box {
+        background: linear-gradient(135deg, #0F2552 0%, #1E3A8A 100%);
         color: white;
-        padding: 1.8rem 2rem;
-        border-radius: 16px;
-        box-shadow: 0 10px 25px -5px rgba(15, 37, 82, 0.3);
-        margin-bottom: 2rem;
-        text-align: center;
-        border: 2px solid #C59B27;
+        padding: 20px 30px;
+        border-radius: 15px;
+        box-shadow: 0 4px 15px rgba(15, 37, 82, 0.2);
+        margin-bottom: 25px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 4px solid #D97706;
     }
-    
-    .header-title {
-        font-size: 2.2rem;
-        font-weight: 800;
-        color: #FFFFFF;
-        margin-top: 0.5rem;
-        margin-bottom: 0.2rem;
-        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    }
-    
-    .header-subtitle {
-        font-size: 1.15rem;
-        font-weight: 600;
-        color: #E2E8F0;
-    }
-    
-    /* تحسين القائمة الجانبية والهيكل الإداري أسفلها */
-    [data-testid="stSidebar"] {
-        background-color: #FFFFFF;
-        border-left: 1px solid #E2E8F0;
-    }
-    
-    .sidebar-footer {
-        background: #F8FAFC;
-        border: 1px solid #CBD5E1;
-        border-right: 4px solid #C59B27;
-        border-radius: 10px;
-        padding: 1rem;
-        margin-top: 2rem;
-    }
-    
-    .sidebar-footer-title {
-        font-size: 0.95rem;
-        font-weight: 800;
-        color: #0F2552;
-        margin-bottom: 0.8rem;
+    .header-text {
         text-align: right;
-        border-bottom: 1px solid #E2E8F0;
-        padding-bottom: 0.4rem;
+    }
+    .header-title {
+        font-size: 26px;
+        font-weight: 800;
+        margin: 0;
+        color: #FFFFFF;
+    }
+    .header-subtitle {
+        font-size: 16px;
+        color: #E2E8F0;
+        margin-top: 5px;
+        font-weight: 600;
     }
     
-    .admin-item {
-        margin-bottom: 0.6rem;
+    /* تنسيق بطاقة الطالب */
+    .student-card {
+        text-align: right;
+        direction: rtl;
+        padding: 4px 0;
     }
-    
-    .admin-item-title {
-        font-size: 0.78rem;
+    .student-name {
+        font-size: 15px;
+        font-weight: 700;
+        color: #1E293B;
+    }
+    .student-id {
+        font-size: 12px;
         color: #64748B;
         font-weight: 600;
-    }
-    
-    .admin-item-name {
-        font-size: 0.9rem;
-        color: #0F172A;
-        font-weight: 700;
-    }
-    
-    /* بطاقات الإحصاءات */
-    [data-testid="stMetric"] {
-        background-color: #FFFFFF;
-        border: 1px solid #E2E8F0;
-        padding: 1rem;
-        border-radius: 12px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-    }
-    
-    /* الأزرار والتبويبات */
-    .stButton > button {
-        border-radius: 10px;
-        font-weight: 700;
-        font-size: 1rem;
-    }
-    
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-    }
-    
-    .stTabs [data-baseweb="tab"] {
-        border-radius: 8px;
-        padding: 8px 16px;
-        font-weight: 700;
-        background-color: #FFFFFF;
-        border: 1px solid #E2E8F0;
+        display: block;
+        margin-top: 2px;
     }
 
-    .stTabs [aria-selected="true"] {
-        background-color: #0F2552 !important;
-        color: white !important;
+    /* تنسيق الهيكل الإداري في القائمة الجانبية */
+    .sidebar-admin-box {
+        background-color: #F8FAFC;
+        border-right: 4px solid #0F2552;
+        border-radius: 8px;
+        padding: 12px 15px;
+        margin-top: 20px;
+        text-align: right;
+        direction: rtl;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .sidebar-admin-title {
+        color: #0F2552;
+        font-weight: 800;
+        font-size: 15px;
+        margin-bottom: 8px;
+    }
+    .sidebar-admin-item {
+        font-size: 13px;
+        color: #334155;
+        margin: 4px 0;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------------------------------------------------
-# 2. الشعار المعتمد الدقيق لمدارس الثغر (Navy & Gold SVG Logo)
-# ---------------------------------------------------------
-thaghar_logo_svg = """
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 220" width="280" height="123">
-  <!-- Book & Rays Symbol -->
-  <g transform="translate(250, 65)">
-    <!-- Blue Rays -->
-    <path d="M-60,-25 C-30,-55 0,-15 0,35 C0,-15 30,-55 60,-25 L50,40 C25,18 0,40 0,40 C0,40 -25,18 -50,40 Z" fill="#0F2552" />
-    <path d="M-90,-5 C-45,-45 0,-5 0,55 C0,-5 45,-45 90,-5 L75,35 C38,10 0,35 0,35 C0,35 -38,10 -75,35 Z" fill="#0F2552" opacity="0.95" />
-    <!-- Gold Book Pages -->
-    <path d="M0,35 C-25,10 -60,35 -85,15 L-95,25 C-65,50 -25,25 0,52 C25,25 65,50 95,25 L85,15 C60,35 25,10 0,35 Z" fill="#C59B27" />
-    <path d="M0,20 C-20,-2 -50,20 -70,2 L-78,10 C-54,32 -20,8 0,32 C20,8 54,32 78,10 L70,2 C50,20 20,-2 0,20 Z" fill="#C59B27" />
-    <!-- Top Gold Figure Dots -->
-    <circle cx="-32" cy="-45" r="11" fill="#0F2552" />
-    <circle cx="32" cy="-45" r="11" fill="#C59B27" />
-  </g>
-  <!-- Arabic Text -->
-  <text x="250" y="165" font-family="'Cairo', sans-serif" font-size="28" font-weight="800" fill="#FFFFFF" text-anchor="middle" letter-spacing="1">مدارس الثغر النموذجية الأهلية</text>
-  <!-- English Text -->
-  <text x="250" y="195" font-family="sans-serif" font-size="15" font-weight="600" fill="#C59B27" text-anchor="middle" letter-spacing="1.5">Al-Thagher Private Model Schools</text>
-</svg>
-"""
-
-st.markdown(f"""
-<div class="header-container">
-    <div style="display: flex; justify-content: center; align-items: center;">
-        {thaghar_logo_svg}
+### ---------------------------------------------------------
+### 2. الترويسة والشعار المعتمد لمدارس الثغر
+### ---------------------------------------------------------
+header_html = """
+<div class="header-box">
+    <div class="header-text">
+        <div class="header-title">متوسطة الثغر النموذجية الأهلية - بنين</div>
+        <div class="header-subtitle">نظام رصد ومتابعة الحضور والغياب اليومي (1447 - 1448هـ)</div>
     </div>
-    <div class="header-title">متوسطة الثغر النموذجية الأهلية - بنين</div>
-    <div class="header-subtitle">نظام رصد ومتابعة الحضور والغياب اليومي (1447 - 1448هـ)</div>
+    <div>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 220" width="160" height="70">
+            <path d="M250 20 L400 100 L250 180 L100 100 Z" fill="#D97706" />
+            <text x="250" y="115" font-family="'Cairo', sans-serif" font-size="32" font-weight="bold" fill="#FFFFFF" text-anchor="middle">الثغر</text>
+        </svg>
+    </div>
 </div>
-""", unsafe_allow_html=True)
+"""
+st.markdown(header_html, unsafe_allow_html=True)
 
-# ---------------------------------------------------------
-# 3. قوائم المعلمين وطلاب المدرسة الكلية (167 طالباً)
-# ---------------------------------------------------------
+### ---------------------------------------------------------
+### 3. قوائم المعلمين وطلاب المدرسة الكلية (167 طالباً)
+### ---------------------------------------------------------
 TEACHERS_LIST = [
-    "محمد سامي السعيد",
-    "علي محمد معوض",
-    "أحمد عبد الحميد سعيد",
-    "محمد عبد المنعم أبو كيلة",
-    "هيثم رضا عطية",
-    "عماد الدين نصر كرم",
-    "السيد الغريب بدوي",
-    "محمد إبراهيم عبد الرحمن",
-    "أسامة أحمد سالم",
-    "عماد بكر عارف",
-    "إبراهيم علي العتيبي",
-    "عيسى خالد العويس",
-    "زيد بن علي التميمي"
+    "محمد سامي السعيد", "علي محمد معوض", "أحمد عبد الحميد سعيد", "محمد عبد المنعم أبو كيلة",
+    "هيثم رضا عطية", "عماد الدين نصر كرم", "السيد الغريب بدوي", "محمد إبراهيم عبد الرحمن",
+    "أسامة أحمد سالم", "عماد بكر عارف", "إبراهيم علي العتيبي", "عيسى خالد العويس", "زيد بن علي التميمي"
 ]
 
 STUDENTS_DB = {
@@ -377,9 +317,9 @@ STUDENTS_DB = {
     }
 }
 
-# ---------------------------------------------------------
-# 4. دالة توليد صفحة HTML المجهزة للطباعة والحفظ PDF
-# ---------------------------------------------------------
+### ---------------------------------------------------------
+### 4. دالة توليد صفحة HTML المجهزة للطباعة والحفظ PDF
+### ---------------------------------------------------------
 def generate_printable_html(df_subset, report_title):
     rows_html = ""
     for idx, row in enumerate(df_subset.to_dict('records'), 1):
@@ -388,8 +328,7 @@ def generate_printable_html(df_subset, report_title):
         rows_html += f"""
         <tr>
             <td>{idx}</td>
-            <td><b>{row['اسم الطالب']}</b></td>
-            <td>{row['رقم الطالب']}</td>
+            <td style="text-align: right;"><b>{row['اسم الطالب']}</b><br><small style="color: #64748B;">الهوية: {row['رقم الطالب']}</small></td>
             <td>{row['الصف']}</td>
             <td>{row['الفصل']}</td>
             <td>{row['الحصة']}</td>
@@ -438,8 +377,7 @@ def generate_printable_html(df_subset, report_title):
         <thead>
             <tr>
                 <th>#</th>
-                <th>اسم الطالب</th>
-                <th>رقم الطالب</th>
+                <th>اسم الطالب ورقم الهوية</th>
                 <th>الصف</th>
                 <th>الفصل</th>
                 <th>الحصة</th>
@@ -451,7 +389,7 @@ def generate_printable_html(df_subset, report_title):
             {rows_html}
         </tbody>
     </table>
-    
+
     <div class="footer-credits">
         <table style="border: none; width: 100%;">
             <tr style="background: none;">
@@ -467,17 +405,21 @@ def generate_printable_html(df_subset, report_title):
     """
     return html_code
 
-# 5. تهيئة ذاكرة البيانات
+### ---------------------------------------------------------
+### 5. تهيئة ذاكرة البيانات
+### ---------------------------------------------------------
 if 'attendance_data' not in st.session_state:
     st.session_state['attendance_data'] = []
 
-# 6. القائمة الجانبية المحدثة
+### ---------------------------------------------------------
+### 6. القائمة الجانبية المحدثة
+### ---------------------------------------------------------
 st.sidebar.title("📌 نظام المتابعة")
 role = st.sidebar.radio("اختر لوحة التحكم:", ["👨‍🏫 حساب المعلم (رصد الحضور)", "👔 حساب الوكيل والمدير (المتابعة والتصدير)"])
 
-# ---------------------------------------------------------
-# 7. واجهة المعلم (رصد الحضور)
-# ---------------------------------------------------------
+### ---------------------------------------------------------
+### 7. واجهة المعلم (رصد الحضور)
+### ---------------------------------------------------------
 if role == "👨‍🏫 حساب المعلم (رصد الحضور)":
     st.subheader("📋 رصد حضور وغياب الطلاب")
     
@@ -494,16 +436,26 @@ if role == "👨‍🏫 حساب المعلم (رصد الحضور)":
         att_date = st.date_input("التاريخ:", date.today())
 
     students_list = STUDENTS_DB[grade][section]
-    
+
     st.info(f"👨‍🏫 **المعلم:** {teacher_name} | 🏫 **الفصل:** {grade} - {section} | ⏰ **الحصة:** {period} | 📅 **التاريخ:** {att_date}")
     st.write("---")
 
     attendance_records = {}
-    
+
     for idx, student in enumerate(students_list, 1):
-        c_num, c_name, c_status = st.columns([0.5, 2.5, 3])
+        c_num, c_name, c_status = st.columns([0.5, 3.5, 3])
         c_num.write(f"**{idx}**")
-        c_name.markdown(f"**{student['name']}**\n`رقم الطالب: {student['id']}`")
+        
+        # محاذاة اسم الطالب لليمين ورقم الهوية أسفله
+        c_name.markdown(
+            f"""
+            <div class="student-card">
+                <span class="student-name">{student['name']}</span>
+                <span class="student-id">رقم الطالب/الهوية: {student['id']}</span>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
         
         status = c_status.radio(
             "حالة الحضور:",
@@ -531,13 +483,12 @@ if role == "👨‍🏫 حساب المعلم (رصد الحضور)":
             })
         st.success(f"تم حفظ حضور فصل ({section}) بنجاح بواسطة المعلم {teacher_name}!")
 
-# ---------------------------------------------------------
-# 8. واجهة الوكيل والمدير (مع نظام كلمة المرور adam112233)
-# ---------------------------------------------------------
+### ---------------------------------------------------------
+### 8. واجهة الوكيل والمدير (مع نظام كلمة المرور adam112233)
+### ---------------------------------------------------------
 else:
     st.subheader("👔 لوحة الوكيل والمدير (المتابعة الإدارية والتصدير)")
     
-    # حماية دخول المدير بالرمز السرّي
     if 'admin_authenticated' not in st.session_state:
         st.session_state['admin_authenticated'] = False
         
@@ -559,7 +510,6 @@ else:
         df = pd.DataFrame(st.session_state['attendance_data'])
         
         if not df.empty:
-            # بطاقات الإحصاءات العامة
             m1, m2, m3, m4, m5 = st.columns(5)
             m1.metric("إجمالي السجلات المرصودة", len(df))
             m2.metric("🟢 الحاضرون", len(df[df['الحالة'] == 'حاضر']))
@@ -569,7 +519,6 @@ else:
             
             st.write("---")
             
-            # تصدير ملفات Excel و CSV
             st.subheader("📥 تصدير التقرير النهائي (Excel / CSV)")
             
             excel_buffer = io.BytesIO()
@@ -600,7 +549,6 @@ else:
 
             st.write("---")
             
-            # عرض الجداول التفصيلية والأسماء كلاً على حدة
             tab_absent, tab_out, tab_late, tab_all = st.tabs([
                 "🔴 كشف الطلاب الغائبين (بالأسماء)", 
                 "🟠 كشف الطلاب خارج الفصل (بالأسماء)", 
@@ -608,7 +556,6 @@ else:
                 "📋 السجل العام الشامل"
             ])
             
-            # 1. قسم الغائبين بالأسماء
             with tab_absent:
                 df_absent = df[df['الحالة'] == 'غائب']
                 st.markdown(f"### 🔴 قائمة أسماء الطلاب الغائبين اليوم (`العدد: {len(df_absent)} طالب`)")
@@ -626,7 +573,6 @@ else:
                 else:
                     st.success("🎉 لا يوجد طلاب غائبون مسجلون اليوم!")
 
-            # 2. قسم الطلاب خارج الفصل بالأسماء
             with tab_out:
                 df_out = df[df['الحالة'] == 'خارج الفصل']
                 st.markdown(f"### 🟠 قائمة أسماء الطلاب المسجلين خارج الفصل (`العدد: {len(df_out)} طالب`)")
@@ -644,7 +590,6 @@ else:
                 else:
                     st.success("✅ لا يوجد طلاب مسجلون خارج الفصل حالياً!")
 
-            # 3. قسم الطلاب المتأخرين
             with tab_late:
                 df_late = df[df['الحالة'] == 'متأخر']
                 st.markdown(f"### 🟡 قائمة أسماء الطلاب المتأخرين عن الحصة (`العدد: {len(df_late)} طالب`)")
@@ -662,7 +607,6 @@ else:
                 else:
                     st.success("✨ لا يوجد طلاب متأخرون مرصودون اليوم!")
 
-            # 4. السجل العام
             with tab_all:
                 st.markdown("### 📋 السجل اليومي العام للرصد")
                 st.dataframe(df, use_container_width=True)
@@ -679,29 +623,16 @@ else:
         else:
             st.info("لا توجد بيانات حضور مرصودة اليوم حتى الآن. سيتم عرض الإحصائيات وأزرار التصدير والطباعة فور بدء المعلمين في رصد الحضور.")
 
-# ---------------------------------------------------------
-# 9. وضع الهيكل الإداري أسفل القائمة الجانبية (Sidebar Bottom Right)
-# ---------------------------------------------------------
+### ---------------------------------------------------------
+### 9. الهيكل الإداري المحاذى لليمين في الشريط الجانبي
+### ---------------------------------------------------------
 st.sidebar.markdown("""
-<div class="sidebar-footer">
-    <div class="sidebar-footer-title">
-        🏢 الهيكل الإداري وفريق التطوير
-    </div>
-    <div class="admin-item">
-        <div class="admin-item-title">مدير المدرسة</div>
-        <div class="admin-item-name">إبراهيم بن موسى التميمي</div>
-    </div>
-    <div class="admin-item">
-        <div class="admin-item-title">وكيل الشؤون التعليمية</div>
-        <div class="admin-item-name">محمد مبروك السيد</div>
-    </div>
-    <div class="admin-item">
-        <div class="admin-item-title">وكيل شؤون الطلاب</div>
-        <div class="admin-item-name">صالح بن عبدالله الدعجاني</div>
-    </div>
-    <div class="admin-item" style="margin-top: 0.8rem; border-top: 1px dashed #CBD5E1; padding-top: 0.4rem;">
-        <div class="admin-item-title" style="color: #C59B27;">تصميم وتطوير النظام</div>
-        <div class="admin-item-name">الأستاذ / محمد سامي السعيد</div>
-    </div>
+<div class="sidebar-admin-box">
+    <div class="sidebar-admin-title">🏫 الهيكل الإداري للمدرسة</div>
+    <div class="sidebar-admin-item"><b>مدير المدرسة:</b> إبراهيم بن موسى التميمي</div>
+    <div class="sidebar-admin-item"><b>وكيل الشؤون التعليمية:</b> محمد مبروك السيد</div>
+    <div class="sidebar-admin-item"><b>وكيل شؤون الطلاب:</b> صالح بن عبدالله الدعجاني</div>
+    <hr style="margin: 8px 0; border: 0; border-top: 1px solid #E2E8F0;">
+    <div class="sidebar-admin-item" style="color: #64748B; font-size: 11px;">تصميم الأستاذ: محمد سامي السعيد</div>
 </div>
 """, unsafe_allow_html=True)
