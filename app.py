@@ -10,7 +10,7 @@ st.markdown("<h2 style='text-align: center; color: #1E3A8A;'>🏫 متوسطة �
 st.markdown("<h4 style='text-align: center; color: #4B5563;'>نظام تحضير ورصد حضور الطلاب (1447 - 1448هـ)</h4>", unsafe_allow_html=True)
 st.write("---")
 
-# قائمة المعلمين المعتمدة بالمدرسة
+# قائمة المعلمين المعتمدة بالمدرسة (13 معلماً)
 TEACHERS_LIST = [
     "محمد سامي السعيد",
     "علي محمد معوض",
@@ -304,11 +304,54 @@ else:
         
         st.write("---")
         
-        # تصدير التقارير اليومية إلى ملف Excel
+        # تصدير التقارير اليومية إلى ملف Excel و CSV
         st.subheader("📥 تصدير التقرير اليومي النهائي")
         
         excel_buffer = io.BytesIO()
         with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
             df.to_excel(writer, sheet_name='السجل العام اليومي', index=False)
             df[df['الحالة'] == 'غائب'].to_excel(writer, sheet_name='كشف الغياب', index=False)
-            df[df['الحالة'] == 'متأخر'].to_excel(writer, sheet_name='
+            df[df['الحالة'] == 'متأخر'].to_excel(writer, sheet_name='كشف المتأخرين', index=False)
+            df[df['الحالة'] == 'خارج الفصل'].to_excel(writer, sheet_name='خارج الفصل', index=False)
+            
+        excel_data = excel_buffer.getvalue()
+        
+        col_down1, col_down2 = st.columns(2)
+        col_down1.download_button(
+            label="📊 تحميل التقرير الشامل كملف Excel (إكسيل)",
+            data=excel_data,
+            file_name=f"تقرير_حضور_متوسطة_الثغر_{date.today()}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        
+        col_down2.download_button(
+            label="📄 تحميل التقرير كملف CSV (للطباعة والحفظ)",
+            data=df.to_csv(index=False).encode('utf-8-sig'),
+            file_name=f"تقرير_حضور_متوسطة_الثغر_{date.today()}.csv",
+            mime="text/csv"
+        )
+        
+        st.write("---")
+        
+        # عرض الجداول التفصيلية
+        tab_all, tab_absent, tab_late, tab_out = st.tabs([
+            "📋 السجل العام", 
+            "🔴 الطلاب الغائبون", 
+            "🟡 المتأخرون عن الحصة", 
+            "🟠 الطلاب خارج الفصل"
+        ])
+        
+        with tab_all:
+            st.dataframe(df, use_container_width=True)
+            
+        with tab_absent:
+            st.dataframe(df[df['الحالة'] == 'غائب'], use_container_width=True)
+            
+        with tab_late:
+            st.dataframe(df[df['الحالة'] == 'متأخر'], use_container_width=True)
+            
+        with tab_out:
+            st.dataframe(df[df['الحالة'] == 'خارج الفصل'], use_container_width=True)
+            
+    else:
+        st.info("لا توجد بيانات حضور مرصودة اليوم حتى الآن. سيتم عرض الإحصائيات وأزرار التصدير فور بدء المعلمين في رصد الحضور.")
