@@ -910,6 +910,53 @@ role = st.sidebar.radio(
 # =========================================================
 # 7. واجهة المعلم (رصد حضور الطلاب ورَفعه لقاعدة البيانات)
 # =========================================================
+
+def render_student_management_section():
+    st.markdown("### 🎓 إدارة الطلاب (نقل فصول الطلاب وإضافة طلاب جدد)")
+    students_db = get_active_students_db()
+    
+    col_m1, col_m2 = st.columns(2)
+    
+    with col_m1:
+        st.markdown("#### 🔄 نقل طالب من فصل لآخر (تعديل فصل طالب)")
+        st.info("💡 اختر الصف والفصل الحالي، ثم اختر الطالب والمراد النقل إليه.")
+        
+        mve_cur_g = st.selectbox("الصف الحالي للطالب:", list(students_db.keys()), key="mve_cur_g_fn")
+        mve_cur_s = st.selectbox("الفصل الحالي للطالب:", list(students_db[mve_cur_g].keys()), key="mve_cur_s_fn")
+        
+        st_list_curr = students_db[mve_cur_g][mve_cur_s]
+        if st_list_curr:
+            st_dict_curr = {f"{s['name']} (رقم الهوية: {s['id']})": s for s in st_list_curr}
+            selected_st_label = st.selectbox("اختر الطالب المراد نقله:", list(st_dict_curr.keys()), key="mve_st_sel_fn")
+            selected_st_obj = st_dict_curr[selected_st_label]
+            
+            mve_tgt_g = st.selectbox("الصف الجديد (الوجهة):", list(students_db.keys()), key="mve_tgt_g_fn")
+            mve_tgt_s = st.selectbox("الفصل الجديد (الوجهة):", list(students_db[mve_tgt_g].keys()), key="mve_tgt_s_fn")
+            
+            if st.button("🔄 تأكيد نقل الطالب للفصل الجديد", type="primary", key="btn_confirm_move_student_fn"):
+                move_student_db(selected_st_obj['id'], selected_st_obj['name'], mve_tgt_g, mve_tgt_s)
+                st.success(f"✨ تم نقل الطالب ({selected_st_obj['name']}) بنجاح إلى ({mve_tgt_g} - {mve_tgt_s})!")
+                st.rerun()
+        else:
+            st.warning("لا يوجد طلاب مسجلين في هذا الفصل حالياً.")
+            
+    with col_m2:
+        st.markdown("#### ➕ إضافة طالب جديد إلى القوائم")
+        st.info("💡 أدخل اسم الطالب ورقم الهوية واختر الصف والفصل المطلوب.")
+        
+        new_st_name = st.text_input("اسم الطالب الرباعي:", key="add_new_st_name_fn")
+        new_st_id = st.text_input("رقم الهوية / الرقم الأكاديمي:", key="add_new_st_id_fn")
+        add_g = st.selectbox("الصف الدراسي:", list(students_db.keys()), key="add_st_g_fn")
+        add_s = st.selectbox("الفصل:", list(students_db[add_g].keys()), key="add_st_s_fn")
+        
+        if st.button("➕ إضافة الطالب للقائمة", type="primary", key="btn_confirm_add_student_fn"):
+            if new_st_name.strip() and new_st_id.strip():
+                add_student_db(new_st_id.strip(), new_st_name.strip(), add_g, add_s)
+                st.success(f"✨ تمت إضافة الطالب ({new_st_name}) بنجاح إلى ({add_g} - {add_s})!")
+                st.rerun()
+            else:
+                st.error("يرجى إدخال اسم الطالب ورقم الهوية بشكل صحيح أولاً!")
+
 if role == "👨‍🏫 حساب المعلم (رصد الحضور)":
     st.markdown("### 📋 رصد حضور وغياب الطلاب")
     
@@ -997,6 +1044,13 @@ if role == "👨‍🏫 حساب المعلم (رصد الحضور)":
         st.info(f"🔒 يرجى إدخال كلمة المرور المكونة من 3 أرقام الخاصة بالمعلم ({teacher_name}) للمتابعة ورصد الحضور.")
     else:
         st.error(f"❌ كلمة المرور غير صحيحة للمعلم ({teacher_name})! يرجى التأكد وإعادة المحاولة.")
+
+
+# =========================================================
+# 7.5. القسم المباشر لإدارة نقل وإضافة الطلاب من الشريط الجانبي
+# =========================================================
+elif role == "🎓 إدارة نقل وإضافة الطلاب (مباشر)":
+    render_student_management_section()
 
 # =========================================================
 # 8. واجهة الوكيل والمدير (المتابعة الإدارية والطباعة والتعديل)
