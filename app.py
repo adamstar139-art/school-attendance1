@@ -14,11 +14,9 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# مسارات قاعدة البيانات الدائمة على السيرفر (Persistent Files)
+# مسارات قاعدة البيانات الدائمة على السيرفر
 STUDENT_ATTENDANCE_FILE = "student_attendance_db.csv"
-TEACHER_LOGS_FILE = "teacher_logs_db.csv"
 
-# دالة قراءة سجلات حضور الطلاب من الملف الدائم
 def load_student_attendance():
     if os.path.exists(STUDENT_ATTENDANCE_FILE):
         try:
@@ -27,14 +25,13 @@ def load_student_attendance():
             pass
     return pd.DataFrame(columns=["التاريخ", "اسم المعلم", "الصف", "الفصل", "الحصة", "رقم الطالب", "اسم الطالب", "الحالة"])
 
-# دالة حفظ سجلات حضور الطلاب في الملف الدائم
 def save_student_attendance(new_records):
     df_existing = load_student_attendance()
     df_new = pd.DataFrame(new_records)
     df_combined = pd.concat([df_existing, df_new], ignore_index=True)
     df_combined.to_csv(STUDENT_ATTENDANCE_FILE, index=False, encoding='utf-8-sig')
 
-# تنسيقات الهوية البصرية لمدارس الثغر
+# تنسيقات الهوية البصرية لمدارس الثغر مع المحاذاة الكاملة لليمين
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
@@ -42,13 +39,14 @@ st.markdown("""
     html, body, [class*="css"] {
         font-family: 'Cairo', sans-serif;
         direction: rtl;
-        text-align: right;
+        text-align: right !important;
     }
     
     .stApp {
         background-color: #F8FAFC;
     }
     
+    /* الترويسة العلوية الرسمية */
     .header-container {
         background: linear-gradient(135deg, #0F2552 0%, #1E3A8A 60%, #2563EB 100%);
         color: white;
@@ -67,17 +65,20 @@ st.markdown("""
         margin-top: 0.5rem;
         margin-bottom: 0.2rem;
         text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        text-align: center;
     }
     
     .header-subtitle {
         font-size: 1.15rem;
         font-weight: 600;
         color: #E2E8F0;
+        text-align: center;
     }
     
     [data-testid="stSidebar"] {
         background-color: #FFFFFF;
         border-left: 1px solid #E2E8F0;
+        text-align: right !important;
     }
     
     .sidebar-footer {
@@ -87,6 +88,8 @@ st.markdown("""
         border-radius: 10px;
         padding: 1rem;
         margin-top: 2rem;
+        text-align: right !important;
+        direction: rtl !important;
     }
     
     .sidebar-footer-title {
@@ -94,25 +97,50 @@ st.markdown("""
         font-weight: 800;
         color: #0F2552;
         margin-bottom: 0.8rem;
-        text-align: right;
+        text-align: right !important;
         border-bottom: 1px solid #E2E8F0;
         padding-bottom: 0.4rem;
     }
     
     .admin-item {
         margin-bottom: 0.6rem;
+        text-align: right !important;
     }
     
     .admin-item-title {
         font-size: 0.78rem;
         color: #64748B;
         font-weight: 600;
+        text-align: right !important;
     }
     
     .admin-item-name {
         font-size: 0.9rem;
         color: #0F172A;
         font-weight: 700;
+        text-align: right !important;
+    }
+    
+    .student-card-box {
+        text-align: right !important;
+        direction: rtl !important;
+        padding: 4px 0;
+    }
+    
+    .student-name-text {
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: #0F172A;
+        display: block;
+        text-align: right !important;
+    }
+    
+    .student-id-text {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #64748B;
+        display: block;
+        text-align: right !important;
     }
     
     [data-testid="stMetric"] {
@@ -149,10 +177,10 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 2. الشعار المعتمد لمدارس الثغر
+# 2. الشعار العادي بدون أي كود زائد في الترويسة
 # ---------------------------------------------------------
 thaghar_logo_svg = """
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 220" width="280" height="123">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 220" width="260" height="114">
   <g transform="translate(250, 65)">
     <path d="M-60,-25 C-30,-55 0,-15 0,35 C0,-15 30,-55 60,-25 L50,40 C25,18 0,40 0,40 C0,40 -25,18 -50,40 Z" fill="#0F2552" />
     <path d="M-90,-5 C-45,-45 0,-5 0,55 C0,-5 45,-45 90,-5 L75,35 C38,10 0,35 0,35 C0,35 -38,10 -75,35 Z" fill="#0F2552" opacity="0.95" />
@@ -391,8 +419,10 @@ def generate_printable_html(df_subset, report_title):
         rows_html += f"""
         <tr>
             <td>{idx}</td>
-            <td><b>{row['اسم الطالب']}</b></td>
-            <td>{row['رقم الطالب']}</td>
+            <td style="text-align: right; direction: rtl;">
+                <b>{row['اسم الطالب']}</b><br>
+                <small style="color: #64748B;">رقم الهوية: {row['رقم الطالب']}</small>
+            </td>
             <td>{row['الصف']}</td>
             <td>{row['الفصل']}</td>
             <td>{row['الحصة']}</td>
@@ -409,7 +439,7 @@ def generate_printable_html(df_subset, report_title):
     <title>{report_title}</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
-        body {{ font-family: 'Cairo', sans-serif; text-align: right; padding: 20px; background-color: #FFFFFF; color: #1E293B; }}
+        body {{ font-family: 'Cairo', sans-serif; text-align: right; padding: 20px; background-color: #FFFFFF; color: #1E293B; direction: rtl; }}
         .header {{ text-align: center; border-bottom: 3px solid #0F2552; padding-bottom: 12px; margin-bottom: 20px; }}
         h2 {{ color: #0F2552; margin: 5px; font-weight: 800; font-size: 22px; }}
         h4 {{ color: #4B5563; margin: 5px; font-weight: 700; font-size: 16px; }}
@@ -418,7 +448,7 @@ def generate_printable_html(df_subset, report_title):
         th, td {{ border: 1px solid #CBD5E1; padding: 10px; text-align: center; font-size: 13px; }}
         th {{ background-color: #0F2552; color: white; font-weight: 700; }}
         tr:nth-child(even) {{ background-color: #F8FAFC; }}
-        .footer-credits {{ margin-top: 40px; border-top: 2px solid #E2E8F0; padding-top: 20px; text-align: center; font-size: 12px; color: #475569; }}
+        .footer-credits {{ margin-top: 40px; border-top: 2px solid #E2E8F0; padding-top: 20px; text-align: right; direction: rtl; }}
         @media print {{
             .no-print {{ display: none; }}
         }}
@@ -441,8 +471,7 @@ def generate_printable_html(df_subset, report_title):
         <thead>
             <tr>
                 <th>#</th>
-                <th>اسم الطالب</th>
-                <th>رقم الطالب</th>
+                <th style="text-align: right;">اسم الطالب ورقم الهوية</th>
                 <th>الصف</th>
                 <th>الفصل</th>
                 <th>الحصة</th>
@@ -458,10 +487,10 @@ def generate_printable_html(df_subset, report_title):
     <div class="footer-credits">
         <table style="border: none; width: 100%;">
             <tr style="background: none;">
-                <td style="border: none; font-weight: bold;">مدير المدرسة: إبراهيم بن موسى التميمي</td>
-                <td style="border: none; font-weight: bold;">وكيل الشؤون التعليمية: محمد مبروك السيد</td>
-                <td style="border: none; font-weight: bold;">وكيل شؤون الطلاب: صالح بن عبدالله الدعجاني</td>
-                <td style="border: none; font-weight: bold;">تصميم الأستاذ: محمد سامي السعيد</td>
+                <td style="border: none; font-weight: bold; text-align: right;">مدير المدرسة: إبراهيم بن موسى التميمي</td>
+                <td style="border: none; font-weight: bold; text-align: right;">وكيل الشؤون التعليمية: محمد مبروك السيد</td>
+                <td style="border: none; font-weight: bold; text-align: right;">وكيل شؤون الطلاب: صالح بن عبدالله الدعجاني</td>
+                <td style="border: none; font-weight: bold; text-align: right; color: #C59B27;">تصميم الأستاذ: محمد سامي السعيد</td>
             </tr>
         </table>
     </div>
@@ -502,9 +531,19 @@ if role == "👨‍🏫 حساب المعلم (رصد الحضور)":
     attendance_records = {}
     
     for idx, student in enumerate(students_list, 1):
-        c_num, c_name, c_status = st.columns([0.5, 2.5, 3])
+        c_num, c_name, c_status = st.columns([0.5, 3.5, 3])
         c_num.write(f"**{idx}**")
-        c_name.markdown(f"**{student['name']}**\n`رقم الطالب: {student['id']}`")
+        
+        # عرض اسم الطالب وأسفله مباشرة رقم الهوية بمحاذاة اليمين
+        c_name.markdown(
+            f"""
+            <div class="student-card-box">
+                <span class="student-name-text">{student['name']}</span>
+                <span class="student-id-text">رقم الهوية: {student['id']}</span>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
         
         status = c_status.radio(
             "حالة الحضور:",
@@ -532,10 +571,10 @@ if role == "👨‍🏫 حساب المعلم (رصد الحضور)":
                 "الحالة": info['status']
             })
         save_student_attendance(new_list)
-        st.success(f"تم حفظ ورصد حضور فصل ({section}) بنجاح في قاعدة البيانات الدائمة بواسطة المعلم {teacher_name}!")
+        st.success(f"تم حفظ ورصد حضور فصل ({section}) بنجاح في قاعدة البيانات بواسطة المعلم {teacher_name}!")
 
 # ---------------------------------------------------------
-# 7. واجهة الوكيل والمدير (القراءة الدائمة من السيرفر)
+# 7. واجهة الوكيل والمدير
 # ---------------------------------------------------------
 else:
     st.subheader("👔 لوحة الوكيل والمدير (المتابعة الإدارية والتصدير)")
@@ -558,7 +597,6 @@ else:
             st.session_state['admin_authenticated'] = False
             st.rerun()
             
-        # قراءة البيانات الدائمة فوراً من الملف السحابي/السيرفر
         df = load_student_attendance()
         
         if not df.empty:
@@ -676,7 +714,7 @@ else:
             st.info("لا توجد بيانات حضور مرصودة في قاعدة البيانات حتى الآن.")
 
 # ---------------------------------------------------------
-# 8. الهيكل الإداري أسفل القائمة الجانبية (Sidebar)
+# 8. الهيكل الإداري بمحاذاة اليمين أسفل الشريط الجانبي (Sidebar)
 # ---------------------------------------------------------
 st.sidebar.markdown("""
 <div class="sidebar-footer">
@@ -697,7 +735,7 @@ st.sidebar.markdown("""
     </div>
     <div class="admin-item" style="margin-top: 0.8rem; border-top: 1px dashed #CBD5E1; padding-top: 0.4rem;">
         <div class="admin-item-title" style="color: #C59B27;">تصميم وتطوير النظام</div>
-        <div class="admin-item-name">الأستاذ / محمد سامي السعيد</div>
+        <div class="admin-item-name">ا / محمد سامي السعيد</div>
     </div>
 </div>
 """, unsafe_allow_html=True)
