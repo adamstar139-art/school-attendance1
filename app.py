@@ -1,5 +1,11 @@
+import io
+import os
+from datetime import date, datetime
+import pandas as pd
+import streamlit as st
 
-# 1. إعدادات الصفحة والتصميم المتجاوب (Responsive CSS)
+# ---------------------------------------------------------
+# 1. إعدادات الصفحة والتصميم المتجاوب
 # ---------------------------------------------------------
 st.set_page_config(
     page_title="نظام متوسطة الثغر النموذجية",
@@ -41,7 +47,7 @@ def save_student_attendance(new_records):
 
 
 # ---------------------------------------------------------
-# 2. الهوية البصرية وتنسيق الترويسة
+# 2. الهوية البصرية وتنسيق الترويسة (معالجة المسافات البادئة)
 # ---------------------------------------------------------
 st.markdown(
     """
@@ -90,32 +96,17 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-thaghar_logo_svg = """
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 220" width="220" height="96">
-  <g transform="translate(250, 65)">
-    <path d="M-60,-25 C-30,-55 0,-15 0,35 C0,-15 30,-55 60,-25 L50,40 C25,18 0,40 0,40 C0,40 -25,18 -50,40 Z" fill="#0F2552"/>
-    <path d="M-90,-5 C-45,-45 0,-5 0,55 C0,-5 45,-45 90,-5 L75,35 C38,10 0,35 0,35 C0,35 -38,10 -75,35 Z" fill="#0F2552" opacity="0.95"/>
-    <path d="M0,35 C-25,10 -60,35 -85,15 L-95,25 C-65,50 -25,25 0,52 C25,25 65,50 95,25 L85,15 C60,35 25,10 0,35 Z" fill="#C59B27"/>
-    <circle cx="-32" cy="-45" r="11" fill="#0F2552"/>
-    <circle cx="32" cy="-45" r="11" fill="#C59B27"/>
-  </g>
-  <text x="250" y="165" font-family="'Cairo', sans-serif" font-size="26" font-weight="800" fill="#FFFFFF" text-anchor="middle">مدارس الثغر النموذجية الأهلية</text>
-  <text x="250" y="195" font-family="sans-serif" font-size="14" font-weight="600" fill="#C59B27" text-anchor="middle">Al-Thagher Private Model Schools</text>
-</svg>
-"""
+# الشعار بصيغة SVG سطر واحد بدون مسافات بادئة تمنع ظهوره كـ Code Block
+thaghar_logo_svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 220" width="220" height="96"><g transform="translate(250, 65)"><path d="M-60,-25 C-30,-55 0,-15 0,35 C0,-15 30,-55 60,-25 L50,40 C25,18 0,40 0,40 C0,40 -25,18 -50,40 Z" fill="#0F2552"/><path d="M-90,-5 C-45,-45 0,-5 0,55 C0,-5 45,-45 90,-5 L75,35 C38,10 0,35 0,35 C0,35 -38,10 -75,35 Z" fill="#0F2552" opacity="0.95"/><path d="M0,35 C-25,10 -60,35 -85,15 L-95,25 C-65,50 -25,25 0,52 C25,25 65,50 95,25 L85,15 C60,35 25,10 0,35 Z" fill="#C59B27"/><circle cx="-32" cy="-45" r="11" fill="#0F2552"/><circle cx="32" cy="-45" r="11" fill="#C59B27"/></g><text x="250" y="165" font-family="\'Cairo\', sans-serif" font-size="26" font-weight="800" fill="#FFFFFF" text-anchor="middle">مدارس الثغر النموذجية الأهلية</text><text x="250" y="195" font-family="sans-serif" font-size="14" font-weight="600" fill="#C59B27" text-anchor="middle">Al-Thagher Private Model Schools</text></svg>'
 
+# عرض الترويسة بنظافة وبدون أخطاء أكواد
 st.markdown(
-    f"""
-<div class="main-header-container">
-    {thaghar_logo_svg}
-    <h3 style="margin-top:10px; color:#FFFFFF;">نظام رصد ومتابعة الحضور والغياب اليومي</h3>
-</div>
-""",
+    f'<div class="main-header-container">{thaghar_logo_svg}<h3 style="margin-top:10px; color:#FFFFFF;">نظام رصد ومتابعة الحضور والغياب اليومي</h3></div>',
     unsafe_allow_html=True,
 )
 
 # ---------------------------------------------------------
-# 3. قوائم المعلمين والحصص وشجرة الطلاب الكاملة
+# 3. قوائم المعلمين والحصص والطلاب
 # ---------------------------------------------------------
 TEACHERS_LIST = [
     "محمد سامي السعيد",
@@ -166,7 +157,7 @@ STUDENTS_DB = {
         "ثاني ثاني (فصل 2)": [
             {
                 "id": "1166753291",
-                "name": "ابراهيم بن مبارك بن راشد بن عبدالرحمن السبعان آل موينع",
+                "name": "ابراهيم بن مبارك بن راشد بن عبدالرحمن آل موينع",
             },
             {"id": "1167148251", "name": "حامد بن محمد بن حامد شباط"},
         ],
@@ -196,7 +187,7 @@ STUDENTS_DB = {
 
 
 # ---------------------------------------------------------
-# 4. دالة توليد تقرير الطباعة الشامل مع إدراج الهيكل الإداري
+# 4. دالة تقرير الطباعة الشامل
 # ---------------------------------------------------------
 def generate_printable_html(df_subset, report_title):
     rows_html = ""
@@ -294,7 +285,7 @@ def generate_printable_html(df_subset, report_title):
 
 
 # ---------------------------------------------------------
-# 5. الشريط الجانبي وتضمين بيانات القيادة والمصمم
+# 5. الشريط الجانبي
 # ---------------------------------------------------------
 st.sidebar.title("📌 نظام المتابعة")
 role = st.sidebar.radio(
@@ -305,7 +296,6 @@ role = st.sidebar.radio(
     ],
 )
 
-# إدراج الكادر الإداري والمصمم في الشريط الجانبي أسفل القائمة
 st.sidebar.markdown(
     """
 ---
@@ -397,12 +387,11 @@ if role == "👨‍🏫 حساب المعلم (رصد الحضور)":
         )
 
 # ---------------------------------------------------------
-# 7. واجهة الوكيل والمدير (لوحة التحكم مع الخيارات الكاملة)
+# 7. واجهة الوكيل والمدير
 # ---------------------------------------------------------
 else:
     st.subheader("👔 لوحة الوكيل والمدير (المتابعة الإدارية والتصدير)")
 
-    # بطاقة إبراز الهيكل الإداري والمصمم بالصفحة الرئيسية للوحة التحكم
     st.markdown(
         """
     <div style="background-color:#F8FAFC; border:1px solid #E2E8F0; padding:15px; border-radius:10px; margin-bottom:20px;">
@@ -422,9 +411,7 @@ else:
         st.session_state["admin_authenticated"] = False
 
     if not st.session_state["admin_authenticated"]:
-        st.warning(
-            "🔒 هذه اللوحة مخصصة لإدارة المدرسة فقط. يرجى إدخال كلمة المرور للمتابعة:"
-        )
+        st.warning("🔒 يرجى إدخال كلمة المرور للمتابعة:")
         pwd_input = st.text_input("كلمة المرور:", type="password")
         if st.button("تسجيل الدخول"):
             if pwd_input == "adam112233":
@@ -432,7 +419,7 @@ else:
                 st.success("تم الدخول بنجاح!")
                 st.rerun()
             else:
-                st.error("كلمة المرور غير صحيحة! يرجى التأكد وإعادة المحاولة.")
+                st.error("كلمة المرور غير صحيحة!")
     else:
         if st.button("🚪 تسجيل الخروج من لوحة الإدارة"):
             st.session_state["admin_authenticated"] = False
@@ -442,7 +429,6 @@ else:
 
         st.markdown("### 🔍 خيارات التصفية الشاملة واستخراج التقارير")
 
-        # إعداد القائمة الكاملة لكافة الفصول بالمدارس
         all_sections_list = []
         for g_name, g_secs in STUDENTS_DB.items():
             for s_name in g_secs.keys():
@@ -467,12 +453,10 @@ else:
             search_date = st.selectbox("التاريخ:", available_dates)
 
         with f_col3:
-            # إدراج جميع الصفوف المعرفة بالنظام
             all_grades = ["الكل"] + list(STUDENTS_DB.keys())
             search_grade = st.selectbox("الصف الدراسي:", all_grades)
 
         with f_col4:
-            # إدراج جميع الفصول المتاحة طبقاً للصف المختار أو كافة فصول المدرسة
             if search_grade != "الكل":
                 available_sections = ["الكل"] + list(
                     STUDENTS_DB[search_grade].keys()
@@ -482,7 +466,6 @@ else:
             search_section = st.selectbox("الفصل:", available_sections)
 
         with f_col5:
-            # إدراج جميع الحصص من الحصة 1 إلى الحصة 7
             all_periods = ["الكل"] + PERIODS_LIST
             search_period = st.selectbox("الحصة:", all_periods)
 
