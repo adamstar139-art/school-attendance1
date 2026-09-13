@@ -620,6 +620,80 @@ STUDENTS_DB = {
     }
 }
 
+
+# =========================================================
+# 4.1 كلمات مرور المعلمين ودوال نقل وإضافة الطلاب
+# =========================================================
+TEACHER_PASSWORDS = {
+    "محمد سامي السعيد": "101",
+    "علي محمد معوض": "102",
+    "أحمد عبد الحميد سعيد": "103",
+    "محمد عبد المنعم أبو كيلة": "104",
+    "هيثم رضا عطية": "105",
+    "عماد الدين نصر كرم": "106",
+    "السيد الغريب بدوي": "107",
+    "محمد إبراهيم عبد الرحمن": "108",
+    "أسامة أحمد سالم": "109",
+    "عماد بكر عارف": "110",
+    "إبراهيم علي العتيبي": "111",
+    "عيسى خالد العويس": "112",
+    "زيد بن علي التميمي": "113"
+}
+
+def add_student_db(student_id, student_name, grade, section):
+    """إضافة طالب جديد لقاعدة البيانات"""
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS custom_student_roster (
+            student_id TEXT PRIMARY KEY,
+            student_name TEXT,
+            grade TEXT,
+            section TEXT
+        )
+    """)
+    c.execute("""
+        REPLACE INTO custom_student_roster (student_id, student_name, grade, section)
+        VALUES (?, ?, ?, ?)
+    """, (str(student_id), str(student_name), str(grade), str(section)))
+    conn.commit()
+    conn.close()
+
+def move_student_db(student_id, student_name, new_grade, new_section):
+    """نقل طالب إلى فصل جديد في قاعدة البيانات"""
+    add_student_db(student_id, student_name, new_grade, new_section)
+
+def get_active_students_db():
+    """تحميل شجرة الطلاب مع التعديلات والإضافات المسجلة في قاعدة البيانات"""
+    import copy
+    st_db = copy.deepcopy(STUDENTS_DB)
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS custom_student_roster (
+            student_id TEXT PRIMARY KEY,
+            student_name TEXT,
+            grade TEXT,
+            section TEXT
+        )
+    """)
+    c.execute("SELECT student_id, student_name, grade, section FROM custom_student_roster")
+    rows = c.fetchall()
+    conn.close()
+    
+    for st_id, st_name, new_grade, new_section in rows:
+        # حذف الطالب من أي فصل سابق
+        for g in list(st_db.keys()):
+            for s in list(st_db[g].keys()):
+                st_db[g][s] = [st for st in st_db[g][s] if str(st['id']).strip() != str(st_id).strip()]
+        
+        # إضافة الطالب إلى الفصل والصف الجديد
+        if new_grade in st_db and new_section in st_db[new_grade]:
+            st_db[new_grade][new_section].append({"id": str(st_id), "name": str(st_name)})
+            
+    return st_db
+
+
 # =========================================================
 # 5. دوال توليد صفحات HTML للطباعة
 # =========================================================
@@ -713,7 +787,7 @@ def generate_printable_html(df_subset, report_title):
             </tr>
         </table>
         <div class="designer-title-print">
-            ✨ تصميم : محمد سامي السعيد ✨
+            ✨ تصميم: محمد سامي السعيد ✨
         </div>
     </div>
     </body>
@@ -816,7 +890,7 @@ def generate_teacher_range_report_html(teacher_summary_list, start_d, end_d, cal
             </tr>
         </table>
         <div class="designer-title-print">
-            ✨ تصميم الأستاذ: محمد سامي السعيد ✨
+            ✨ تصميم: محمد سامي السعيد ✨
         </div>
     </div>
     </body>
@@ -839,74 +913,90 @@ role = st.sidebar.radio(
 if role == "👨‍🏫 حساب المعلم (رصد الحضور)":
     st.markdown("### 📋 رصد حضور وغياب الطلاب")
     
-    col_t, col_g, col_s, col_p, col_d = st.columns(5)
+    students_db = get_active_students_db()
+    
+    col_t, col_pin = st.columns([3, 2])
     with col_t:
         teacher_name = st.selectbox("اسم المعلم:", TEACHERS_LIST)
-    with col_g:
-        grade = st.selectbox("الصف الدراسي:", list(STUDENTS_DB.keys()))
-    with col_s:
-        section = st.selectbox("الفصل:", list(STUDENTS_DB[grade].keys()))
-    with col_p:
-        period = st.selectbox("الحصة:", PERIODS_LIST)
-    with col_d:
-        att_date = st.date_input("التاريخ:", date.today())
-
-    students_list = STUDENTS_DB[grade][section]
-
-    st.markdown(f"""
-    <div class="student-row-box" style="background-color: #EFF6FF; border-right-color: #2563EB; margin-top: 10px; margin-bottom: 20px;">
-        <span style="font-weight: 700; color: #1E3A8A; font-size: 15px;">
-            👨‍🏫 <b>المعلم:</b> {teacher_name} &nbsp;|&nbsp; 🏫 <b>الفصل:</b> {grade} - {section} &nbsp;|&nbsp; ⏰ <b>الحصة:</b> {period} &nbsp;|&nbsp; 📅 <b>التاريخ:</b> {att_date}
-        </span>
-        <span style="font-weight: 700; color: #D97706; font-size: 14px;">إجمالي طلاب الفصل: {len(students_list)} طالب</span>
-    </div>
-    """, unsafe_allow_html=True)
-
-    attendance_records = {}
-
-    for idx, student in enumerate(students_list, 1):
-        col_info, col_radio = st.columns([4, 3])
+    with col_pin:
+        teacher_pin = st.text_input("🔑 كلمة المرور (3 أرقام):", type="password", key=f"t_pin_{teacher_name}", max_chars=3)
         
-        with col_info:
-            st.markdown(f"""
-            <div class="student-row-box">
-                <div>
-                    <span class="student-badge-num">{idx}</span>
-                    <span class="student-name-txt">{student['name']}</span>
-                    <span class="student-id-txt">(رقم الهوية: {student['id']})</span>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+    correct_pin = TEACHER_PASSWORDS.get(teacher_name, "101")
+    
+    if teacher_pin == correct_pin:
+        st.success(f"✅ أهلاً بك {teacher_name}! تم التحقق من كلمة المرور بنجاح.")
+        
+        col_g, col_s, col_p, col_d = st.columns(4)
+        with col_g:
+            grade = st.selectbox("الصف الدراسي:", list(students_db.keys()))
+        with col_s:
+            section = st.selectbox("الفصل:", list(students_db[grade].keys()))
+        with col_p:
+            period = st.selectbox("الحصة:", PERIODS_LIST)
+        with col_d:
+            att_date = st.date_input("التاريخ:", date.today())
+
+        students_list = students_db[grade][section]
+
+        st.markdown(f"""
+        <div class="student-row-box" style="background-color: #EFF6FF; border-right-color: #2563EB; margin-top: 10px; margin-bottom: 20px;">
+            <span style="font-weight: 700; color: #1E3A8A; font-size: 15px;">
+                👨‍🏫 <b>المعلم:</b> {teacher_name} &nbsp;|&nbsp; 🏫 <b>الفصل:</b> {grade} - {section} &nbsp;|&nbsp; ⏰ <b>الحصة:</b> {period} &nbsp;|&nbsp; 📅 <b>التاريخ:</b> {att_date}
+            </span>
+            <span style="font-weight: 700; color: #D97706; font-size: 14px;">إجمالي طلاب الفصل: {len(students_list)} طالب</span>
+        </div>
+        """, unsafe_allow_html=True)
+
+        attendance_records = {}
+
+        for idx, student in enumerate(students_list, 1):
+            col_info, col_radio = st.columns([4, 3])
             
-        with col_radio:
-            status = st.radio(
-                "حالة الحضور:",
-                ["حاضر", "غائب", "خارج الفصل", "متأخر"],
-                key=f"{teacher_name}_{grade}_{section}_{period}_{student['id']}",
-                horizontal=True
-            )
-            attendance_records[student['id']] = {
-                "name": student['name'],
-                "status": status
-            }
+            with col_info:
+                st.markdown(f"""
+                <div class="student-row-box">
+                    <div>
+                        <span class="student-badge-num">{idx}</span>
+                        <span class="student-name-txt">{student['name']}</span>
+                        <span class="student-id-txt">(رقم الهوية: {student['id']})</span>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+            with col_radio:
+                status = st.radio(
+                    "حالة الحضور:",
+                    ["حاضر", "غائب", "خارج الفصل", "متأخر"],
+                    key=f"{teacher_name}_{grade}_{section}_{period}_{student['id']}",
+                    horizontal=True
+                )
+                attendance_records[student['id']] = {
+                    "name": student['name'],
+                    "status": status
+                }
 
-    st.write("---")
-    if st.button("💾 حفظ وإرسال كشف الحضور لقاعدة البيانات", type="primary", use_container_width=True):
-        records_to_save = []
-        for st_id, info in attendance_records.items():
-            records_to_save.append({
-                "التاريخ": str(att_date),
-                "اسم المعلم": teacher_name,
-                "الصف": grade,
-                "الفصل": section,
-                "الحصة": period,
-                "رقم الطالب": st_id,
-                "اسم الطالب": info['name'],
-                "الحالة": info['status']
-            })
-        
-        save_student_attendance_to_db(records_to_save)
-        st.success(f"✨ تم حفظ ورصد حضور فصل ({section}) لعدد {len(records_to_save)} طالب بنجاح وبشكل دائم في قاعدة البيانات بواسطة المعلم {teacher_name}!")
+        st.write("---")
+        if st.button("💾 حفظ وإرسال كشف الحضور لقاعدة البيانات", type="primary", use_container_width=True):
+            records_to_save = []
+            for st_id, info in attendance_records.items():
+                records_to_save.append({
+                    "التاريخ": str(att_date),
+                    "اسم المعلم": teacher_name,
+                    "الصف": grade,
+                    "الفصل": section,
+                    "الحصة": period,
+                    "رقم الطالب": st_id,
+                    "اسم الطالب": info['name'],
+                    "الحالة": info['status']
+                })
+            
+            save_student_attendance_to_db(records_to_save)
+            st.success(f"✨ تم حفظ ورصد حضور فصل ({section}) لعدد {len(records_to_save)} طالب بنجاح وبشكل دائم في قاعدة البيانات بواسطة المعلم {teacher_name}!")
+
+    elif teacher_pin == "":
+        st.info(f"🔒 يرجى إدخال كلمة المرور المكونة من 3 أرقام الخاصة بالمعلم ({teacher_name}) للمتابعة ورصد الحضور.")
+    else:
+        st.error(f"❌ كلمة المرور غير صحيحة للمعلم ({teacher_name})! يرجى التأكد وإعادة المحاولة.")
 
 # =========================================================
 # 8. واجهة الوكيل والمدير (المتابعة الإدارية والطباعة والتعديل)
@@ -995,6 +1085,7 @@ else:
         
         # 🎯 القوائم المنسدلة الموحدة لصفحة المدير
         st.markdown("### 🔍 فلترة وتخصيص بيانات التقارير والطباعة")
+        students_db = get_active_students_db()
         col_f_date, col_f_grade, col_f_sec, col_f_period = st.columns(4)
         
         with col_f_date:
@@ -1002,17 +1093,17 @@ else:
             filter_date = st.selectbox("📅 اختر التاريخ:", unique_dates)
             
         with col_f_grade:
-            all_grades = list(STUDENTS_DB.keys())
+            all_grades = list(students_db.keys())
             filter_grade = st.selectbox("🏫 اختر الصف الدراسي:", ["الكل"] + all_grades)
             
         with col_f_sec:
             if filter_grade != "الكل":
-                available_sections = list(STUDENTS_DB[filter_grade].keys())
+                available_sections = list(students_db[filter_grade].keys())
                 filter_section = st.selectbox("🚪 اختر الفصل:", ["الكل"] + available_sections)
             else:
                 all_sections = []
-                for g in STUDENTS_DB:
-                    all_sections.extend(list(STUDENTS_DB[g].keys()))
+                for g in students_db:
+                    all_sections.extend(list(students_db[g].keys()))
                 filter_section = st.selectbox("🚪 اختر الفصل:", ["الكل"] + sorted(list(set(all_sections))))
                 
         with col_f_period:
@@ -1029,8 +1120,9 @@ else:
             if filter_period != "الكل":
                 df_filtered = df_filtered[df_filtered['الحصة'] == filter_period]
 
-        tab_teachers, tab_absent, tab_out, tab_late, tab_all = st.tabs([
+        tab_teachers, tab_manage_students, tab_absent, tab_out, tab_late, tab_all = st.tabs([
             "👨‍🏫 إحصائية وتقارير وتعديل المعلمين",
+            "🎓 إدارة نقل وإضافة الطلاب",
             "🔴 كشف الطلاب الغائبين", 
             "🟠 كشف الطلاب خارج الفصل", 
             "🟡 كشف المتأخرين عن الحصة", 
@@ -1227,7 +1319,56 @@ else:
             else:
                 st.info("👈 اختر نطاق التاريخ المطلوب (من / إلى)، ثم انقر على زر **`▶️ بدء عرض التقرير`** للبدء وعرض البيانات.")
 
+        
         # ---------------------------------------------------------
+        # 1.5. إدارة نقل فصول الطلاب وإضافة طلاب جدد
+        # ---------------------------------------------------------
+        with tab_manage_students:
+            st.markdown("### 🎓 إدارة الطلاب (نقل فصول الطلاب وإضافة طلاب جدد)")
+            
+            col_m1, col_m2 = st.columns(2)
+            
+            with col_m1:
+                st.markdown("#### 🔄 نقل طالب من فصل لآخر (تعديل فصل طالب)")
+                st.info("💡 اختر الصف والفصل الحالي، ثم اختر الطالب والمراد النقل إليه.")
+                
+                mve_cur_g = st.selectbox("الصف الحالي للطالب:", list(students_db.keys()), key="mve_cur_g")
+                mve_cur_s = st.selectbox("الفصل الحالي للطالب:", list(students_db[mve_cur_g].keys()), key="mve_cur_s")
+                
+                st_list_curr = students_db[mve_cur_g][mve_cur_s]
+                if st_list_curr:
+                    st_dict_curr = {f"{s['name']} (رقم الهوية: {s['id']})": s for s in st_list_curr}
+                    selected_st_label = st.selectbox("اختر الطالب المراد نقله:", list(st_dict_curr.keys()), key="mve_st_sel")
+                    selected_st_obj = st_dict_curr[selected_st_label]
+                    
+                    mve_tgt_g = st.selectbox("الصف الجديد (الوجهة):", list(students_db.keys()), key="mve_tgt_g")
+                    mve_tgt_s = st.selectbox("الفصل الجديد (الوجهة):", list(students_db[mve_tgt_g].keys()), key="mve_tgt_s")
+                    
+                    if st.button("🔄 تأكيد نقل الطالب للفصل الجديد", type="primary", key="btn_confirm_move_student"):
+                        move_student_db(selected_st_obj['id'], selected_st_obj['name'], mve_tgt_g, mve_tgt_s)
+                        st.success(f"✨ تم نقل الطالب ({selected_st_obj['name']}) بنجاح إلى ({mve_tgt_g} - {mve_tgt_s})!")
+                        st.rerun()
+                else:
+                    st.warning("لا يوجد طلاب مسجلين في هذا الفصل حالياً.")
+                    
+            with col_m2:
+                st.markdown("#### ➕ إضافة طالب جديد إلى القوائم")
+                st.info("💡 أدخل اسم الطالب ورقم الهوية واغتر الصف والفصل المطلوب.")
+                
+                new_st_name = st.text_input("اسم الطالب الرباعي:", key="add_new_st_name")
+                new_st_id = st.text_input("رقم الهوية / الرقم الأكاديمي:", key="add_new_st_id")
+                add_g = st.selectbox("الصف الدراسي:", list(students_db.keys()), key="add_st_g")
+                add_s = st.selectbox("الفصل:", list(students_db[add_g].keys()), key="add_st_s")
+                
+                if st.button("➕ إضافة الطالب للقائمة", type="primary", key="btn_confirm_add_student"):
+                    if new_st_name.strip() and new_st_id.strip():
+                        add_student_db(new_st_id.strip(), new_st_name.strip(), add_g, add_s)
+                        st.success(f"✨ تمت إضافة الطالب ({new_st_name}) بنجاح إلى ({add_g} - {add_s})!")
+                        st.rerun()
+                    else:
+                        st.error("يرجى إدخال اسم الطالب ورقم الهوية بشكل صحيح أولاً!")
+
+# ---------------------------------------------------------
         # 2. كشف الطلاب الغائبين
         # ---------------------------------------------------------
         with tab_absent:
@@ -1356,6 +1497,6 @@ st.sidebar.markdown("""
     <p style="font-size: 12px; margin: 3px;"><b>وكيل الشؤون التعليمية:</b> محمد مبروك السيد</p>
     <p style="font-size: 12px; margin: 3px;"><b>وكيل شؤون الطلاب:</b> صالح بن عبدالله الدعجاني</p>
     <hr style="border-color: #334155; margin: 10px 0;">
-    <small style="color: #F59E0B; font-weight: bold;">✨ تصميم : محمد سامي السعيد ✨</small>
+    <small style="color: #F59E0B; font-weight: bold;">✨ تصميم: محمد سامي السعيد ✨</small>
 </div>
 """, unsafe_allow_html=True)
