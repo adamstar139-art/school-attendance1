@@ -1,10 +1,4 @@
-import io
-import os
-from datetime import date, datetime, timedelta
-import pandas as pd
-import streamlit as st
 
-# ---------------------------------------------------------
 # 1. إعدادات الصفحة والتصميم المتجاوب (Responsive CSS)
 # ---------------------------------------------------------
 st.set_page_config(
@@ -14,7 +8,6 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# مسارات قاعدة البيانات الدائمة على السيرفر
 STUDENT_ATTENDANCE_FILE = "student_attendance_db.csv"
 
 
@@ -48,7 +41,7 @@ def save_student_attendance(new_records):
 
 
 # ---------------------------------------------------------
-# 2. تنسيقات الهوية البصرية لمدارس الثغر وتصفية الأكواد
+# 2. الهوية البصرية وتنسيق الترويسة
 # ---------------------------------------------------------
 st.markdown(
     """
@@ -84,12 +77,19 @@ st.markdown(
         margin-bottom: 25px;
         box-shadow: 0 4px 10px rgba(0,0,0,0.15);
     }
+    .admin-info-box {
+        background-color: #F1F5F9;
+        border-right: 4px solid #C59B27;
+        padding: 12px 15px;
+        border-radius: 8px;
+        margin-top: 15px;
+        font-size: 13px;
+    }
 </style>
 """,
     unsafe_allow_html=True,
 )
 
-# شعار مدارس الثغر SVG (مدمج بدون ظهور أكواد نصية)
 thaghar_logo_svg = """
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 220" width="220" height="96">
   <g transform="translate(250, 65)">
@@ -104,7 +104,6 @@ thaghar_logo_svg = """
 </svg>
 """
 
-# عرض الترويسة بشكل احترافي مع قمع الأكواد البرمجية
 st.markdown(
     f"""
 <div class="main-header-container">
@@ -116,7 +115,7 @@ st.markdown(
 )
 
 # ---------------------------------------------------------
-# 3. قوائم المعلمين والحصص والطلاب
+# 3. قوائم المعلمين والحصص وشجرة الطلاب الكاملة
 # ---------------------------------------------------------
 TEACHERS_LIST = [
     "محمد سامي السعيد",
@@ -167,9 +166,13 @@ STUDENTS_DB = {
         "ثاني ثاني (فصل 2)": [
             {
                 "id": "1166753291",
-                "name": "ابراهيم بن مبارك بن راشد بن عبدالرحمن آل موينع",
+                "name": "ابراهيم بن مبارك بن راشد بن عبدالرحمن السبعان آل موينع",
             },
             {"id": "1167148251", "name": "حامد بن محمد بن حامد شباط"},
+        ],
+        "ثاني ثالث (فصل 3)": [
+            {"id": "1166911709", "name": "ثامر عمر ابراهيم عثمان"},
+            {"id": "008464815", "name": "جهاد فارس عبدالقادر حتاوي"},
         ],
     },
     "الثالث المتوسط": {
@@ -181,11 +184,19 @@ STUDENTS_DB = {
             {"id": "1156933093", "name": "تركي عبدالعزيز عبدالله المرزوق"},
             {"id": "1160223317", "name": "تركي عثمان عبدالعزيز العثمان"},
         ],
+        "ثالث ثالث (فصل 3)": [
+            {"id": "1163525544", "name": "ثامر وليد بن عبدالعزيز الطليحي"},
+            {
+                "id": "1160712996",
+                "name": "خالد بن عبدالرؤوف بن عبدالرحمن الشنير",
+            },
+        ],
     },
 }
 
+
 # ---------------------------------------------------------
-# 4. دالة توليد صفحة HTML احترافية للطباعة المباشرة و PDF
+# 4. دالة توليد تقرير الطباعة الشامل مع إدراج الهيكل الإداري
 # ---------------------------------------------------------
 def generate_printable_html(df_subset, report_title):
     rows_html = ""
@@ -232,6 +243,7 @@ def generate_printable_html(df_subset, report_title):
         th, td {{ border: 1px solid #CBD5E1; padding: 10px; text-align: center; font-size: 13px; }}
         th {{ background-color: #0F2552; color: white; font-weight: 700; }}
         tr:nth-child(even) {{ background-color: #F8FAFC; }}
+        .footer-credits {{ margin-top: 40px; border-top: 2px solid #E2E8F0; padding-top: 20px; text-align: right; direction: rtl; }}
         @media print {{ .no-print {{ display: none; }} }}
     </style>
     </head>
@@ -264,6 +276,17 @@ def generate_printable_html(df_subset, report_title):
             {rows_html}
         </tbody>
     </table>
+
+    <div class="footer-credits">
+        <table style="border: none; width: 100%;">
+            <tr style="background: none;">
+                <td style="border: none; font-weight: bold; text-align: right;">مدير المدرسة: إبراهيم بن موسى التميمي</td>
+                <td style="border: none; font-weight: bold; text-align: right;">وكيل الشؤون التعليمية: محمد مبروك السيد</td>
+                <td style="border: none; font-weight: bold; text-align: right;">وكيل شؤون الطلاب: صالح بن عبدالله الدعجاني</td>
+                <td style="border: none; font-weight: bold; text-align: right; color: #C59B27;">تصميم الأستاذ: محمد سامي السعيد</td>
+            </tr>
+        </table>
+    </div>
     </body>
     </html>
     """
@@ -271,7 +294,7 @@ def generate_printable_html(df_subset, report_title):
 
 
 # ---------------------------------------------------------
-# 5. القائمة الجانبية وتصفح اللوحات
+# 5. الشريط الجانبي وتضمين بيانات القيادة والمصمم
 # ---------------------------------------------------------
 st.sidebar.title("📌 نظام المتابعة")
 role = st.sidebar.radio(
@@ -280,6 +303,22 @@ role = st.sidebar.radio(
         "👨‍🏫 حساب المعلم (رصد الحضور)",
         "👔 حساب الوكيل والمدير (المتابعة والتصدير)",
     ],
+)
+
+# إدراج الكادر الإداري والمصمم في الشريط الجانبي أسفل القائمة
+st.sidebar.markdown(
+    """
+---
+<div class="admin-info-box">
+    <h4 style="margin:0 0 8px 0; color:#0F2552; font-weight:800;">🏛️ الهيكل الإداري والقيادي</h4>
+    <p style="margin:3px 0;"><b>مدير المدرسة:</b> إبراهيم بن موسى التميمي</p>
+    <p style="margin:3px 0;"><b>وكيل الشؤون التعليمية:</b> محمد مبروك السيد</p>
+    <p style="margin:3px 0;"><b>وكيل شؤون الطلاب:</b> صالح بن عبدالله الدعجاني</p>
+    <hr style="margin:8px 0; border:0; border-top:1px solid #CBD5E1;">
+    <p style="margin:3px 0; color:#C59B27; font-weight:700;"><b>تصميم وإعداد:</b> الأستاذ محمد سامي السعيد</p>
+</div>
+""",
+    unsafe_allow_html=True,
 )
 
 # ---------------------------------------------------------
@@ -358,16 +397,34 @@ if role == "👨‍🏫 حساب المعلم (رصد الحضور)":
         )
 
 # ---------------------------------------------------------
-# 7. واجهة الوكيل والمدير (مع نظام التصفية وبحث ابدأ)
+# 7. واجهة الوكيل والمدير (لوحة التحكم مع الخيارات الكاملة)
 # ---------------------------------------------------------
 else:
-    st.subheader("👔 لوحة الوكيل والمدير (المتابعة الإدارية والتقارير)")
+    st.subheader("👔 لوحة الوكيل والمدير (المتابعة الإدارية والتصدير)")
+
+    # بطاقة إبراز الهيكل الإداري والمصمم بالصفحة الرئيسية للوحة التحكم
+    st.markdown(
+        """
+    <div style="background-color:#F8FAFC; border:1px solid #E2E8F0; padding:15px; border-radius:10px; margin-bottom:20px;">
+        <h4 style="margin:0 0 10px 0; color:#0F2552;">🏛️ بيانات القيادة الإدارية ومصمم النظام:</h4>
+        <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px; font-size:14px;">
+            <div><b>مدير المدرسة:</b> إبراهيم بن موسى التميمي</div>
+            <div><b>وكيل الشؤون التعليمية:</b> محمد مبروك السيد</div>
+            <div><b>وكيل شؤون الطلاب:</b> صالح بن عبدالله الدعجاني</div>
+            <div style="color:#C59B27;"><b>تصميم الأستاذ:</b> محمد سامي السعيد</div>
+        </div>
+    </div>
+    """,
+        unsafe_allow_html=True,
+    )
 
     if "admin_authenticated" not in st.session_state:
         st.session_state["admin_authenticated"] = False
 
     if not st.session_state["admin_authenticated"]:
-        st.warning("🔒 يرجى إدخال كلمة المرور للمتابعة:")
+        st.warning(
+            "🔒 هذه اللوحة مخصصة لإدارة المدرسة فقط. يرجى إدخال كلمة المرور للمتابعة:"
+        )
         pwd_input = st.text_input("كلمة المرور:", type="password")
         if st.button("تسجيل الدخول"):
             if pwd_input == "adam112233":
@@ -375,66 +432,71 @@ else:
                 st.success("تم الدخول بنجاح!")
                 st.rerun()
             else:
-                st.error("كلمة المرور غير صحيحة!")
+                st.error("كلمة المرور غير صحيحة! يرجى التأكد وإعادة المحاولة.")
     else:
-        if st.button("🚪 تسجيل الخروج"):
+        if st.button("🚪 تسجيل الخروج من لوحة الإدارة"):
             st.session_state["admin_authenticated"] = False
             st.rerun()
 
         df = load_student_attendance()
 
-        if not df.empty:
-            st.markdown("### 🔍 خيارات التصفية واستخراج التقارير")
+        st.markdown("### 🔍 خيارات التصفية الشاملة واستخراج التقارير")
 
-            # شريط خيارات البحث والتصفية
-            f_col1, f_col2, f_col3, f_col4, f_col5 = st.columns(5)
+        # إعداد القائمة الكاملة لكافة الفصول بالمدارس
+        all_sections_list = []
+        for g_name, g_secs in STUDENTS_DB.items():
+            for s_name in g_secs.keys():
+                if s_name not in all_sections_list:
+                    all_sections_list.append(s_name)
 
-            with f_col1:
-                search_status = st.selectbox(
-                    "الحالة المراد عرضها:",
-                    ["الكل", "غائب", "متأخر", "خارج الفصل", "حاضر"],
-                )
+        f_col1, f_col2, f_col3, f_col4, f_col5 = st.columns(5)
 
-            with f_col2:
-                available_dates = ["الكل"] + sorted(
-                    df["التاريخ"].astype(str).unique().tolist(), reverse=True
-                )
-                search_date = st.selectbox("التاريخ:", available_dates)
-
-            with f_col3:
-                available_grades = ["الكل"] + sorted(
-                    df["الصف"].unique().tolist()
-                )
-                search_grade = st.selectbox("الصف الدراسي:", available_grades)
-
-            with f_col4:
-                if search_grade != "الكل":
-                    filtered_sections = ["الكل"] + sorted(
-                        df[df["الصف"] == search_grade]["الفصل"]
-                        .unique()
-                        .tolist()
-                    )
-                else:
-                    filtered_sections = ["الكل"] + sorted(
-                        df["الفصل"].unique().tolist()
-                    )
-                search_section = st.selectbox("الفصل:", filtered_sections)
-
-            with f_col5:
-                available_periods = ["الكل"] + sorted(
-                    df["الحصة"].unique().tolist()
-                )
-                search_period = st.selectbox("الحصة:", available_periods)
-
-            st.write("")
-            btn_start_search = st.button(
-                "🚀 ابدأ البحث / عرض التقرير",
-                type="primary",
-                use_container_width=True,
+        with f_col1:
+            search_status = st.selectbox(
+                "الحالة المراد عرضها:",
+                ["الكل", "غائب", "متأخر", "خارج الفصل", "حاضر"],
             )
 
-            # معالجة بيانات البحث عند النقر على "ابدأ البحث"
-            if btn_start_search or "df_filtered" in st.session_state:
+        with f_col2:
+            dates_in_db = (
+                sorted(df["التاريخ"].astype(str).unique().tolist(), reverse=True)
+                if not df.empty
+                else []
+            )
+            available_dates = ["الكل"] + dates_in_db
+            search_date = st.selectbox("التاريخ:", available_dates)
+
+        with f_col3:
+            # إدراج جميع الصفوف المعرفة بالنظام
+            all_grades = ["الكل"] + list(STUDENTS_DB.keys())
+            search_grade = st.selectbox("الصف الدراسي:", all_grades)
+
+        with f_col4:
+            # إدراج جميع الفصول المتاحة طبقاً للصف المختار أو كافة فصول المدرسة
+            if search_grade != "الكل":
+                available_sections = ["الكل"] + list(
+                    STUDENTS_DB[search_grade].keys()
+                )
+            else:
+                available_sections = ["الكل"] + all_sections_list
+            search_section = st.selectbox("الفصل:", available_sections)
+
+        with f_col5:
+            # إدراج جميع الحصص من الحصة 1 إلى الحصة 7
+            all_periods = ["الكل"] + PERIODS_LIST
+            search_period = st.selectbox("الحصة:", all_periods)
+
+        st.write("")
+        btn_start_search = st.button(
+            "🚀 ابدأ البحث / عرض التقرير",
+            type="primary",
+            use_container_width=True,
+        )
+
+        if btn_start_search or "admin_searched" in st.session_state:
+            st.session_state["admin_searched"] = True
+
+            if not df.empty:
                 df_filtered = df.copy()
 
                 if search_status != "الكل":
@@ -462,14 +524,11 @@ else:
                         df_filtered["الحصة"] == search_period
                     ]
 
-                st.session_state["df_filtered"] = df_filtered
-
                 st.write("---")
                 st.markdown(
-                    f"### 📊 نتائج التقرير حسب التصفية المختارة (`العدد الإجمالي: {len(df_filtered)} طالب`)"
+                    f"### 📊 نتائج التقرير حسب التصفية (`إجمالي النتائج: {len(df_filtered)} طالب`)"
                 )
 
-                # عرض إحصائيات التقرير المفلتر
                 m1, m2, m3, m4 = st.columns(4)
                 m1.metric(
                     "🔴 الغائبون",
@@ -490,7 +549,6 @@ else:
 
                 st.dataframe(df_filtered, use_container_width=True)
 
-                # تنزيل وطباعة التقرير المفلتر
                 if not df_filtered.empty:
                     title_label = f"تقرير الطلاب ({search_status}) - تاريخ: {search_date}"
                     html_report = generate_printable_html(
@@ -499,7 +557,7 @@ else:
 
                     c_btn1, c_btn2 = st.columns(2)
                     c_btn1.download_button(
-                        label="🖨️ فتح صفحة طباعة التقرير التفاعلي (PDF)",
+                        label="🖨️ فتح صفحة طباعة التقرير التفاعلي وحفظه كـ PDF",
                         data=html_report.encode("utf-8"),
                         file_name=f"تقرير_تفاعلي_{date.today()}.html",
                         mime="text/html",
@@ -507,7 +565,7 @@ else:
                     )
 
                     c_btn2.download_button(
-                        label="📊 تصدير النتيجة إلى Excel",
+                        label="📊 تصدير النتيجة إلى CSV",
                         data=df_filtered.to_csv(index=False).encode(
                             "utf-8-sig"
                         ),
@@ -516,6 +574,8 @@ else:
                         use_container_width=True,
                     )
                 else:
-                    st.info("لا توجد سجلات مطابقة للخيارات المختارة.")
-        else:
-            st.info("لا توجد بيانات حضور مرصودة في قاعدة البيانات حتى الآن.")
+                    st.info(
+                        "لا توجد سجلات مرتبطة بالحالة والخيارات التي تم اختيارها."
+                    )
+            else:
+                st.info("لا توجد بيانات حضور مرصودة في قاعدة البيانات حتى الآن.")
