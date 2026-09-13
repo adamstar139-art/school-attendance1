@@ -713,7 +713,7 @@ def generate_printable_html(df_subset, report_title):
             </tr>
         </table>
         <div class="designer-title-print">
-            ✨ تصميم الأستاذ: محمد سامي السعيد ✨
+            ✨ تصميم : محمد سامي السعيد ✨
         </div>
     </div>
     </body>
@@ -1356,6 +1356,6 @@ st.sidebar.markdown("""
     <p style="font-size: 12px; margin: 3px;"><b>وكيل الشؤون التعليمية:</b> محمد مبروك السيد</p>
     <p style="font-size: 12px; margin: 3px;"><b>وكيل شؤون الطلاب:</b> صالح بن عبدالله الدعجاني</p>
     <hr style="border-color: #334155; margin: 10px 0;">
-    <small style="color: #F59E0B; font-weight: bold;">✨ تصميم الأستاذ: محمد سامي السعيد ✨</small>
+    <small style="color: #F59E0B; font-weight: bold;">✨ تصميم : محمد سامي السعيد ✨</small>
 </div>
 """, unsafe_allow_html=True)
