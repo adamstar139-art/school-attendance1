@@ -1,14 +1,155 @@
 import streamlit as st
+import pandas as pd
+from datetime import date, datetime, timedelta
+import io
+import sqlite3
 
-# 1. تهيئة حالة القفل بكلمة المرور
+# =========================================================
+# 0. تهيئة وإنشاء قاعدة البيانات (SQLite DB) للحفظ الدائم
+# =========================================================
+DB_FILE = "attendance_system.db"
+
+def init_db():
+    """إنشاء الجداول في قاعدة البيانات إذا لم تكن موجودة"""
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    # جدول سجلات حضور الطلاب
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS student_attendance (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date TEXT,
+            teacher_name TEXT,
+            grade TEXT,
+            section TEXT,
+            period TEXT,
+            student_id TEXT,
+            student_name TEXT,
+            status TEXT
+        )
+    ''')
+    # جدول سجلات حضور المعلمين
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS teacher_daily_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date TEXT,
+            hijri_date TEXT,
+            teacher_name TEXT,
+            status TEXT,
+            sessions_count INTEGER,
+            notes TEXT
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+def load_student_attendance_from_db():
+    """تحميل سجلات حضور الطلاب من قاعدة البيانات"""
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("SELECT date, teacher_name, grade, section, period, student_id, student_name, status FROM student_attendance")
+    rows = c.fetchall()
+    conn.close()
+    records = []
+    for r in rows:
+        records.append({
+            "التاريخ": r[0],
+            "اسم المعلم": r[1],
+            "الصف": r[2],
+            "الفصل": r[3],
+            "الحصة": r[4],
+            "رقم الطالب": r[5],
+            "اسم الطالب": r[6],
+            "الحالة": r[7]
+        })
+    return records
+
+def save_student_attendance_to_db(new_records):
+    """حفظ سجلات حضور الطلاب الجديدة في قاعدة البيانات فوراً"""
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    for r in new_records:
+        c.execute('''
+            INSERT INTO student_attendance (date, teacher_name, grade, section, period, student_id, student_name, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (r['التاريخ'], r['اسم المعلم'], r['الصف'], r['الفصل'], r['الحصة'], r['رقم الطالب'], r['اسم الطالب'], r['الحالة']))
+    conn.commit()
+    conn.close()
+
+def delete_student_attendance_from_db(scope):
+    """حذف سجلات الطلاب من قاعدة البيانات حسب النطاق"""
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    today_str = str(date.today())
+    if "يومي" in scope:
+        c.execute("DELETE FROM student_attendance WHERE date = ?", (today_str,))
+    elif "أسبوعي" in scope:
+        seven_days_ago = str(date.today() - timedelta(days=7))
+        c.execute("DELETE FROM student_attendance WHERE date >= ?", (seven_days_ago,))
+    else:
+        c.execute("DELETE FROM student_attendance")
+    conn.commit()
+    conn.close()
+
+def load_teacher_logs_from_db():
+    """تحميل سجلات المعلمين من قاعدة البيانات"""
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("SELECT date, hijri_date, teacher_name, status, sessions_count, notes FROM teacher_daily_logs")
+    rows = c.fetchall()
+    conn.close()
+    logs = []
+    for r in rows:
+        logs.append({
+            "التاريخ": r[0],
+            "التاريخ_الهجري": r[1],
+            "اسم المعلم": r[2],
+            "الحالة": r[3],
+            "الحصص المرصودة": r[4],
+            "ملاحظات": r[5]
+        })
+    return logs
+
+def save_teacher_logs_to_db(logs, target_date_str=None):
+    """حفظ سجلات المعلمين في قاعدة البيانات فوراً مع استبدال تاريخ اليوم إذا حدد"""
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    if target_date_str:
+        c.execute("DELETE FROM teacher_daily_logs WHERE date = ?", (target_date_str,))
+    for r in logs:
+        c.execute('''
+            INSERT INTO teacher_daily_logs (date, hijri_date, teacher_name, status, sessions_count, notes)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (r['التاريخ'], r['التاريخ_الهجري'], r['اسم المعلم'], r['الحالة'], r['الحصص المرصودة'], r.get('ملاحظات', '-')))
+    conn.commit()
+    conn.close()
+
+def delete_teacher_logs_from_db(scope):
+    """حذف سجلات المعلمين من قاعدة البيانات حسب النطاق"""
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    today_str = str(date.today())
+    if "يومي" in scope:
+        c.execute("DELETE FROM teacher_daily_logs WHERE date = ?", (today_str,))
+    elif "أسبوعي" in scope:
+        seven_days_ago = str(date.today() - timedelta(days=7))
+        c.execute("DELETE FROM teacher_daily_logs WHERE date >= ?", (seven_days_ago,))
+    else:
+        c.execute("DELETE FROM teacher_daily_logs")
+    conn.commit()
+    conn.close()
+
+# تشغيل التهيئة عند بدء التطبيق
+init_db()
+
+# =========================================================
+# 1. تهيئة حالة القفل بكلمة المرور والشريط العلوي
+# =========================================================
 if 'dev_unlocked' not in st.session_state:
     st.session_state['dev_unlocked'] = False
 
-# 2. تطبيق كود CSS لإخفاء الأيقونات العلوية (GitHub، التعديل، والقائمة) تلقائياً
 if not st.session_state['dev_unlocked']:
     st.markdown("""
         <style>
-        /* إخفاء شريط الأدوات العلوي وأيقونات التعديل و GitHub بالكامل */
         #MainMenu {visibility: hidden;}
         header {visibility: hidden;}
         footer {visibility: hidden;}
@@ -17,7 +158,6 @@ if not st.session_state['dev_unlocked']:
         </style>
     """, unsafe_allow_html=True)
 
-# 3. خيار إدخال كلمة المرور للمدير لفك القفل وإظهار أدوات التعديل
 with st.sidebar.expander("🔐 فك قفل أدوات التعديل و الكود"):
     pwd_dev = st.text_input("أدخل كلمة المرور (adam0000):", type="password", key="pwd_dev_input")
     if st.button("فتح التعديل"):
@@ -27,14 +167,10 @@ with st.sidebar.expander("🔐 فك قفل أدوات التعديل و الكو
             st.rerun()
         else:
             st.error("كلمة المرور غير صحيحة!")
-import streamlit as st
-import pandas as pd
-from datetime import date, datetime, timedelta
-import io
 
-### ---------------------------------------------------------
-### 1. إعدادات الصفحة والتصميم المتجاوب (Responsive CSS)
-### ---------------------------------------------------------
+# =========================================================
+# 2. إعدادات الصفحة والتصميم المتجاوب (Responsive CSS)
+# =========================================================
 st.set_page_config(
     page_title="نظام تحضير متوسطة الثغر النموذجية",
     page_icon="🏫",
@@ -42,165 +178,60 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 📱 اختيار وضع العرض والتجاوب من الشريط الجانبي
 st.sidebar.title("⚙️ وضع الشاشة والتصفح")
 display_mode = st.sidebar.radio(
-    "اختر طريقة العرض المناسبة لجهازك:", 
+    "اختر طريقة العرض المناسبة لجهازك:",
     ["⚡ تلقائي (متجاوب مع الشاشة)", "📱 وضع الجوال (Mobile)", "💻 وضع الكمبيوتر (Desktop)"]
 )
 
 is_mobile = (display_mode == "📱 وضع الجوال (Mobile)")
 
 # CSS التجاوب والتصميم العالي التنسيق
-st.markdown(f"""
-<style>
+st.markdown("""
+    <style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
-    
-    html, body, [class*="css"] {{
+    html, body, [class*="css"] {
         font-family: 'Cairo', sans-serif;
-        direction: rtl;
-        text-align: right;
-    }}
-    
-    /* تصميم الترويسة الرئيسية */
-    .header-box {{
-        background: linear-gradient(135deg, #0F2552 0%, #1E3A8A 100%);
-        color: white;
-        padding: {'12px 15px' if is_mobile else '20px 30px'};
-        border-radius: 15px;
-        box-shadow: 0 4px 15px rgba(15, 37, 82, 0.2);
-        margin-bottom: 20px;
-        display: flex;
-        flex-direction: {'column-reverse' if is_mobile else 'row'};
-        align-items: center;
-        justify-content: space-between;
-        text-align: {'center' if is_mobile else 'right'};
-        border-bottom: 4px solid #D97706;
-        gap: 12px;
-    }}
-    .header-text {{
-        text-align: {'center' if is_mobile else 'right'};
-    }}
-    .header-title {{
-        font-size: {'19px' if is_mobile else '26px'};
-        font-weight: 800;
-        margin: 0;
-        color: #FFFFFF;
-    }}
-    .header-subtitle {{
-        font-size: {'12px' if is_mobile else '16px'};
-        color: #E2E8F0;
-        margin-top: 5px;
-        font-weight: 600;
-    }}
-    
-    /* بطاقات الطلاب والمعلمين */
-    .student-card {{
-        text-align: right;
-        direction: rtl;
-        padding: 4px 0;
-    }}
-    .student-name {{
-        font-size: {'14px' if is_mobile else '15px'};
-        font-weight: 700;
-        color: #1E293B;
-    }}
-    .student-id {{
-        font-size: {'11px' if is_mobile else '12px'};
-        color: #64748B;
-        font-weight: 600;
-        display: block;
-        margin-top: 2px;
-    }}
-
-    /* الهيكل الإداري وتوقيع المصمم في القائمة الجانبية */
-    .sidebar-admin-box {{
+    }
+    .student-card {
         background-color: #F8FAFC;
-        border-right: 4px solid #0F2552;
-        border-radius: 10px;
-        padding: 12px;
-        margin-top: 15px;
-        text-align: right;
-        direction: rtl;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-    }}
-    .sidebar-admin-title {{
-        color: #0F2552;
-        font-weight: 800;
-        font-size: 14px;
-        margin-bottom: 6px;
-    }}
-    .sidebar-admin-item {{
-        font-size: 12px;
-        color: #334155;
-        margin: 4px 0;
-    }}
-    .designer-badge {{
-        margin-top: 12px;
-        padding: 8px 10px;
-        background: linear-gradient(135deg, #0F2552 0%, #1E3A8A 100%);
-        color: #F59E0B;
-        font-size: 14px;
-        font-weight: 800;
-        text-align: center;
+        border: 1px solid #E2E8F0;
         border-radius: 8px;
-        border: 1px solid #D97706;
-        box-shadow: 0 3px 8px rgba(15, 37, 82, 0.25);
-    }}
-
-    @media (max-width: 768px) {{
-        .header-box {{
-            flex-direction: column-reverse !important;
-            text-align: center !important;
-            padding: 12px !important;
-        }}
-        .header-title {{ font-size: 19px !important; }}
-        .header-subtitle {{ font-size: 12px !important; }}
-        .stButton>button {{ width: 100% !important; }}
-    }}
-</style>
+        padding: 8px 12px;
+        margin-bottom: 4px;
+        display: flex;
+        flex-direction: column;
+    }
+    .student-name {
+        font-weight: 700;
+        color: #0F2552;
+        font-size: 15px;
+    }
+    .student-id {
+        font-size: 12px;
+        color: #64748B;
+    }
+    </style>
 """, unsafe_allow_html=True)
 
-### ---------------------------------------------------------
-### 2. الترويسة والشعار المعتمد لمدارس الثغر
-### ---------------------------------------------------------
-header_html = """
-<div class="header-box">
-    <div class="header-text">
-        <div class="header-title">متوسطة الثغر النموذجية الأهلية - بنين</div>
-        <div class="header-subtitle">نظام رصد ومتابعة الحضور والغياب اليومي (1447 - 1448هـ)</div>
-    </div>
-    <div>
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 220" width="140" height="60">
-            <path d="M250 20 L400 100 L250 180 L100 100 Z" fill="#D97706" />
-            <text x="250" y="115" font-family="'Cairo', sans-serif" font-size="32" font-weight="bold" fill="#FFFFFF" text-anchor="middle">الثغر</text>
-        </svg>
-    </div>
-</div>
-"""
-st.markdown(header_html, unsafe_allow_html=True)
-
-### ---------------------------------------------------------
-### 3. دوال التحويل بين الهجري والميلادي
-### ---------------------------------------------------------
+# =========================================================
+# 3. دوال التحويل بين الهجري والميلادي
+# =========================================================
 def gregorian_to_hijri_approx(g_date):
     try:
         total_days = (g_date - date(2024, 1, 1)).days
         h_year = 1445 + int(total_days / 354.36)
         h_month = 1 + int((total_days % 354.36) / 29.5)
-        if h_month > 12:
-            h_month = 12
+        if h_month > 12: h_month = 12
         h_day = 1 + int((total_days % 29.5))
-        if h_day > 30:
-            h_day = 30
-            
+        if h_day > 30: h_day = 30
         return f"{h_year}/{h_month:02d}/{h_day:02d} هـ"
     except:
         return f"{g_date.strftime('%Y/%m/%d')} هـ"
 
-### ---------------------------------------------------------
-### 4. قوائم المعلمين والطلاب والحصص
-### ---------------------------------------------------------
+# =========================================================
+# 4. قوائم المعلمين والطلاب والحصص
+# =========================================================
 TEACHERS_LIST = [
     "محمد سامي السعيد", "علي محمد معوض", "أحمد عبد الحميد سعيد", "محمد عبد المنعم أبو كيلة",
     "هيثم رضا عطية", "عماد الدين نصر كرم", "السيد الغريب بدوي", "محمد إبراهيم عبد الرحمن",
@@ -401,9 +432,9 @@ STUDENTS_DB = {
     }
 }
 
-### ---------------------------------------------------------
-### 5. دوال توليد صفحات HTML للطباعة (للطلاب وللمعلمين مع عدد الغياب والتأخر)
-### ---------------------------------------------------------
+# =========================================================
+# 5. دوال توليد صفحات HTML للطباعة
+# =========================================================
 def generate_printable_html(df_subset, report_title):
     rows_html = ""
     for idx, row in enumerate(df_subset.to_dict('records'), 1):
@@ -494,7 +525,7 @@ def generate_printable_html(df_subset, report_title):
             </tr>
         </table>
         <div class="designer-title-print">
-            ✨ تصميم الأستاذ: محمد سامي السعيد ✨
+            ✨ تصميم : محمد سامي السعيد ✨
         </div>
     </div>
     </body>
@@ -508,9 +539,8 @@ def generate_teacher_range_report_html(teacher_summary_list, start_d, end_d, cal
         absent_cnt = rec.get('عدد مرات الغياب', 0)
         late_cnt = rec.get('عدد مرات التأخر', 0)
         present_cnt = rec.get('عدد أيام الحضور', 0)
-        
-        absent_style = f"color: #DC2626; font-weight: bold;" if absent_cnt > 0 else "color: #16A34A;"
-        late_style = f"color: #CA8A04; font-weight: bold;" if late_cnt > 0 else "color: #16A34A;"
+        absent_style = "color: #DC2626; font-weight: bold;" if absent_cnt > 0 else "color: #16A34A;"
+        late_style = "color: #CA8A04; font-weight: bold;" if late_cnt > 0 else "color: #16A34A;"
         
         rows_html += f"""
         <tr>
@@ -598,7 +628,7 @@ def generate_teacher_range_report_html(teacher_summary_list, start_d, end_d, cal
             </tr>
         </table>
         <div class="designer-title-print">
-            ✨ تصميم الأستاذ: محمد سامي السعيد ✨
+            ✨ تصميم : محمد سامي السعيد ✨
         </div>
     </div>
     </body>
@@ -606,23 +636,29 @@ def generate_teacher_range_report_html(teacher_summary_list, start_d, end_d, cal
     """
     return html_code
 
-### ---------------------------------------------------------
-### 6. تهيئة ذاكرة البيانات (Students & Teachers Logs)
-### ---------------------------------------------------------
+# =========================================================
+# 6. تهيئة ذاكرة البيانات والمزامنة مع قاعدة البيانات
+# =========================================================
 if 'attendance_data' not in st.session_state:
-    st.session_state['attendance_data'] = []
+    st.session_state['attendance_data'] = load_student_attendance_from_db()
 
 if 'teacher_daily_logs' not in st.session_state:
-    st.session_state['teacher_daily_logs'] = [
-        {
-            "التاريخ": str(date.today()),
-            "التاريخ_الهجري": gregorian_to_hijri_approx(date.today()),
-            "اسم المعلم": t,
-            "الحالة": "حاضر",
-            "الحصص المرصودة": 0,
-            "ملاحظات": "رصد اعتيادي"
-        } for t in TEACHERS_LIST
-    ]
+    db_logs = load_teacher_logs_from_db()
+    if db_logs:
+        st.session_state['teacher_daily_logs'] = db_logs
+    else:
+        init_teacher_logs = [
+            {
+                "التاريخ": str(date.today()),
+                "التاريخ_الهجري": gregorian_to_hijri_approx(date.today()),
+                "اسم المعلم": t,
+                "الحالة": "حاضر",
+                "الحصص المرصودة": 0,
+                "ملاحظات": "رصد اعتيادي"
+            } for t in TEACHERS_LIST
+        ]
+        save_teacher_logs_to_db(init_teacher_logs, str(date.today()))
+        st.session_state['teacher_daily_logs'] = init_teacher_logs
 
 if 'teacher_status_db' not in st.session_state:
     st.session_state['teacher_status_db'] = {t: "حاضر" for t in TEACHERS_LIST}
@@ -630,16 +666,16 @@ if 'teacher_status_db' not in st.session_state:
 if 'search_teacher_started' not in st.session_state:
     st.session_state['search_teacher_started'] = False
 
-### ---------------------------------------------------------
-### 7. القائمة الجانبية
-### ---------------------------------------------------------
+# =========================================================
+# 7. القائمة الجانبية
+# =========================================================
 st.sidebar.title("📌 نظام المتابعة")
-role = st.sidebar.radio("اختر لوحة التحكم:", ["👨‍🏫 حساب المعلم (رصد الحضور)", "👔 حساب الوكيل والمدير (المتابعة والتصدير)"])
+role = st.sidebar.radio("اختر لوحة التحكم:", ["👨🏫 حساب المعلم (رصد الحضور)", "👔 حساب الوكيل والمدير (المتابعة والتصدير)"])
 
-### ---------------------------------------------------------
-### 8. واجهة المعلم (رصد حضور الطلاب)
-### ---------------------------------------------------------
-if role == "👨‍🏫 حساب المعلم (رصد الحضور)":
+# =========================================================
+# 8. واجهة المعلم (رصد حضور الطلاب)
+# =========================================================
+if role == "👨🏫 حساب المعلم (رصد الحضور)":
     st.subheader("📋 رصد حضور وغياب الطلاب")
     
     col_t, col_g, col_s, col_p, col_d = st.columns(5)
@@ -656,7 +692,7 @@ if role == "👨‍🏫 حساب المعلم (رصد الحضور)":
 
     students_list = STUDENTS_DB[grade][section]
 
-    st.info(f"👨‍🏫 **المعلم:** {teacher_name} | 🏫 **الفصل:** {grade} - {section} | ⏰ **الحصة:** {period} | 📅 **التاريخ:** {att_date}")
+    st.info(f"👨🏫 **المعلم:** {teacher_name} | 🏫 **الفصل:** {grade} - {section} | ⏰ **الحصة:** {period} | 📅 **التاريخ:** {att_date}")
     st.write("---")
 
     attendance_records = {}
@@ -688,8 +724,9 @@ if role == "👨‍🏫 حساب المعلم (رصد الحضور)":
 
     st.write("---")
     if st.button("💾 حفظ وإرسال كشف الحضور", type="primary", use_container_width=True):
+        new_records = []
         for st_id, info in attendance_records.items():
-            st.session_state['attendance_data'].append({
+            rec = {
                 "التاريخ": str(att_date),
                 "اسم المعلم": teacher_name,
                 "الصف": grade,
@@ -698,12 +735,17 @@ if role == "👨‍🏫 حساب المعلم (رصد الحضور)":
                 "رقم الطالب": st_id,
                 "اسم الطالب": info['name'],
                 "الحالة": info['status']
-            })
-        st.success(f"تم حفظ حضور فصل ({section}) بنجاح بواسطة المعلم {teacher_name}!")
+            }
+            new_records.append(rec)
+            st.session_state['attendance_data'].append(rec)
+        
+        # حفظ فور دائم في قاعدة البيانات SQLite
+        save_student_attendance_to_db(new_records)
+        st.success(f"✨ تم حفظ ورصد حضور فصل ({section}) بنجاح وبشكل دائم في قاعدة البيانات بواسطة المعلم {teacher_name}!")
 
-### ---------------------------------------------------------
-### 9. واجهة الوكيل والمدير (الإحصائيات ورصد وحفظ وتعديل المعلمين)
-### ---------------------------------------------------------
+# =========================================================
+# 9. واجهة الوكيل والمدير (الإحصائيات ورصد وحفظ وتعديل المعلمين)
+# =========================================================
 else:
     st.subheader("👔 لوحة الوكيل والمدير (المتابعة الإدارية والطباعة والتعديل)")
     
@@ -731,7 +773,7 @@ else:
         
         df = pd.DataFrame(st.session_state['attendance_data'])
         
-        # 🗑️ إدارة حذف تقارير الطلاب وتقارير المعلمين (3 خيارات: يومي / أسبوعي / شهري)
+        # 🗑️ إدارة حذف تقارير الطلاب وتقارير المعلمين
         col_del1, col_del2 = st.columns(2)
         
         with col_del1:
@@ -756,7 +798,10 @@ else:
                             ]
                         else:
                             st.session_state['attendance_data'] = []
-                        st.success("🗑️ تم تنفيذ عملية الحذف لسجلات الطلاب بنجاح!")
+                        
+                        # حذف من قاعدة البيانات الحقيقية
+                        delete_student_attendance_from_db(del_st_scope)
+                        st.success("🗑️ تم تنفيذ عملية الحذف لسجلات الطلاب من الذاكرة وقاعدة البيانات بنجاح!")
                         st.rerun()
                     else:
                         st.error("يرجى التأشير على التأكيد أولاً.")
@@ -783,14 +828,17 @@ else:
                             ]
                         else:
                             st.session_state['teacher_daily_logs'] = []
-                        st.success("🗑️ تم تنفيذ عملية الحذف لسجلات المعلمين بنجاح!")
+                        
+                        # حذف من قاعدة البيانات الحقيقية
+                        delete_teacher_logs_from_db(del_tc_scope)
+                        st.success("🗑️ تم تنفيذ عملية الحذف لسجلات المعلمين من الذاكرة وقاعدة البيانات بنجاح!")
                         st.rerun()
                     else:
                         st.error("يرجى التأشير على التأكيد أولاً.")
 
         st.write("---")
         
-        # 🎯 القوائم المنسدلة الموحدة لصفحة المدير (الصف، الفصل، الحصة)
+        # 🎯 القوائم المنسدلة الموحدة لصفحة المدير
         st.markdown("### 🔍 فلترة وتخصيص بيانات التقارير والطباعة")
         col_f_date, col_f_grade, col_f_sec, col_f_period = st.columns(4)
         
@@ -827,7 +875,7 @@ else:
                 df_filtered = df_filtered[df_filtered['الحصة'] == filter_period]
 
         tab_teachers, tab_absent, tab_out, tab_late, tab_all = st.tabs([
-            "👨‍🏫 إحصائية وتقارير وتعديل المعلمين",
+            "👨🏫 إحصائية وتقارير وتعديل المعلمين",
             "🔴 كشف الطلاب الغائبين", 
             "🟠 كشف الطلاب خارج الفصل", 
             "🟡 كشف المتأخرين عن الحصة", 
@@ -835,10 +883,10 @@ else:
         ])
         
         # ---------------------------------------------------------
-        # 1. إحصائيات المعلمين وزر بدء التقرير وعرض عدد مرات الغياب والتأخر
+        # 1. إحصائيات المعلمين وزر بدء التقرير وعرض غياب وتأخر المعلمين
         # ---------------------------------------------------------
         with tab_teachers:
-            st.markdown("### 👨‍🏫 إحصائية وحالة حضور وغياب كادر المعلمين")
+            st.markdown("### 👨🏫 إحصائية وحالة حضور وغياب كادر المعلمين")
             
             teacher_session_counts = {}
             if not df.empty:
@@ -877,16 +925,23 @@ else:
             if st.button("💾 حفظ وإرسال كشف حضور المعلمين", type="primary", use_container_width=True, key="btn_save_send_teachers"):
                 today_str = str(date.today())
                 st.session_state['teacher_daily_logs'] = [r for r in st.session_state['teacher_daily_logs'] if r.get('التاريخ') != today_str]
+                
+                new_t_logs = []
                 for t_name, info in teachers_summary_data.items():
-                    st.session_state['teacher_daily_logs'].append({
+                    r = {
                         "التاريخ": today_str,
                         "التاريخ_الهجري": gregorian_to_hijri_approx(date.today()),
                         "اسم المعلم": t_name,
                         "الحالة": info['status'],
                         "الحصص المرصودة": info['sessions'],
                         "ملاحظات": "تم الحفظ والإرسال"
-                    })
-                st.success("✨ تم حفظ وإرسال كشف حضور وغياب المعلمين بنجاح!")
+                    }
+                    new_t_logs.append(r)
+                    st.session_state['teacher_daily_logs'].append(r)
+                
+                # حفظ في قاعدة البيانات دائم
+                save_teacher_logs_to_db(new_t_logs, today_str)
+                st.success("✨ تم حفظ وإرسال كشف حضور وغياب المعلمين بنجاح وبشكل دائم في قاعدة البيانات!")
 
             st.write("---")
 
@@ -933,12 +988,15 @@ else:
                 if st.button("💾 حفظ وتحديث تعديلات المعلمين", type="primary", key="btn_update_edited_teachers"):
                     st.session_state['teacher_daily_logs'] = [r for r in st.session_state['teacher_daily_logs'] if r['التاريخ'] != str(edit_date)]
                     st.session_state['teacher_daily_logs'].extend(updated_logs)
-                    st.success("✨ تم حفظ وتعديل سجلات المعلمين بنجاح!")
+                    
+                    # حفظ التحديث في قاعدة البيانات
+                    save_teacher_logs_to_db(updated_logs, str(edit_date))
+                    st.success("✨ تم حفظ وتعديل سجلات المعلمين بنجاح في قاعدة البيانات!")
                     st.rerun()
 
             st.write("---")
             
-            # 🖨️ قسم اختيار الفترة الزمنية مع زر (▶️ بدء) وحساب عدد الغياب والتأخر
+            # 🖨️ قسم اختيار الفترة الزمنية مع زر (▶️ بدء)
             st.markdown("### 🖨️ تقرير ملخص إحصائيات المعلمين للفترة (مع عدد مرات الغياب والتأخر)")
             
             col_r1, col_r2, col_r3, col_r4 = st.columns([2.5, 2.5, 2.5, 2.5])
@@ -956,9 +1014,7 @@ else:
             if btn_start_search:
                 st.session_state['search_teacher_started'] = True
 
-            # عرض التقرير فقط عند النقر على أيقونة/زر بدء
             if st.session_state.get('search_teacher_started', False):
-                # حساب الإحصائيات (أيام الحضور، مرات الغياب، مرات التأخر) لكل معلم
                 teacher_summary_list = []
                 
                 for t in TEACHERS_LIST:
@@ -1145,17 +1201,17 @@ else:
             else:
                 st.info("لا توجد بيانات حضور مرصودة في السجل اليومي.")
 
-### ---------------------------------------------------------
-### 10. الهيكل الإداري وتوقيع المصمم البارز في الشريط الجانبي
-### ---------------------------------------------------------
+# =========================================================
+# 10. الهيكل الإداري وتوقيع المصمم البارز في الشريط الجانبي
+# =========================================================
+st.sidebar.markdown("---")
 st.sidebar.markdown("""
-<div class="sidebar-admin-box">
-    <div class="sidebar-admin-title">🏫 الهيكل الإداري للمدرسة</div>
-    <div class="sidebar-admin-item"><b>مدير المدرسة:</b> إبراهيم بن موسى التميمي</div>
-    <div class="sidebar-admin-item"><b>وكيل الشؤون التعليمية:</b> محمد مبروك السيد</div>
-    <div class="sidebar-admin-item"><b>وكيل شؤون الطلاب:</b> صالح بن عبدالله الدعجاني</div>
-    <div class="designer-badge">
-        ✨ تصميم الأستاذ: محمد سامي السعيد ✨
-    </div>
+<div style="text-align: center; padding: 10px; background-color: #0F2552; color: white; border-radius: 8px;">
+    <h4 style="color: #F59E0B; margin-bottom: 5px;">🏫 متوسطة الثغر النموذجية</h4>
+    <p style="font-size: 12px; margin: 2px;">مدير المدرسة: إبراهيم بن موسى التميمي</p>
+    <p style="font-size: 12px; margin: 2px;">وكيل الشؤون التعليمية: محمد مبروك السيد</p>
+    <p style="font-size: 12px; margin: 2px;">وكيل شؤون الطلاب: صالح بن عبدالله الدعجاني</p>
+    <hr style="border-color: #334155; margin: 8px 0;">
+    <small style="color: #F59E0B; font-weight: bold;">✨ تصميم : محمد سامي السعيد ✨</small>
 </div>
 """, unsafe_allow_html=True)
