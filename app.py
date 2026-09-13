@@ -5,78 +5,89 @@ import io
 import sqlite3
 
 # =========================================================
-# 0. تهيئة وإنشاء قاعدة البيانات (SQLite DB) للحفظ الدائم
+# 0. إعداد وتجهيز قاعدة البيانات (SQLite Persistence Database)
 # =========================================================
 DB_FILE = "attendance_system.db"
 
 def init_db():
-    """إنشاء الجداول في قاعدة البيانات إذا لم تكن موجودة"""
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    # جدول سجلات حضور الطلاب
-    c.execute('''
+    c.execute("""
         CREATE TABLE IF NOT EXISTS student_attendance (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             date TEXT,
-            teacher_name TEXT,
+            teacher TEXT,
             grade TEXT,
             section TEXT,
             period TEXT,
             student_id TEXT,
             student_name TEXT,
-            status TEXT
+            status TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
-    ''')
-    # جدول سجلات حضور المعلمين
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS teacher_daily_logs (
+    """)
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS teacher_attendance (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             date TEXT,
             hijri_date TEXT,
             teacher_name TEXT,
             status TEXT,
             sessions_count INTEGER,
-            notes TEXT
+            notes TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
-    ''')
+    """)
     conn.commit()
     conn.close()
 
-def load_student_attendance_from_db():
-    """تحميل سجلات حضور الطلاب من قاعدة البيانات"""
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("SELECT date, teacher_name, grade, section, period, student_id, student_name, status FROM student_attendance")
-    rows = c.fetchall()
-    conn.close()
-    records = []
-    for r in rows:
-        records.append({
-            "التاريخ": r[0],
-            "اسم المعلم": r[1],
-            "الصف": r[2],
-            "الفصل": r[3],
-            "الحصة": r[4],
-            "رقم الطالب": r[5],
-            "اسم الطالب": r[6],
-            "الحالة": r[7]
-        })
-    return records
+init_db()
 
-def save_student_attendance_to_db(new_records):
-    """حفظ سجلات حضور الطلاب الجديدة في قاعدة البيانات فوراً"""
+def save_student_attendance_db(records):
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    for r in new_records:
-        c.execute('''
-            INSERT INTO student_attendance (date, teacher_name, grade, section, period, student_id, student_name, status)
+    for r in records:
+        c.execute("""
+            DELETE FROM student_attendance 
+            WHERE date = ? AND student_id = ? AND period = ?
+        """, (str(r['التاريخ']), r['رقم الطالب'], r['الحصة']))
+        
+        c.execute("""
+            INSERT INTO student_attendance 
+            (date, teacher, grade, section, period, student_id, student_name, status)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (r['التاريخ'], r['اسم المعلم'], r['الصف'], r['الفصل'], r['الحصة'], r['رقم الطالب'], r['اسم الطالب'], r['الحالة']))
+        """, (
+            str(r['التاريخ']),
+            r['اسم المعلم'],
+            r['الصف'],
+            r['الفصل'],
+            r['الحصة'],
+            r['رقم الطالب'],
+            r['اسم الطالب'],
+            r['الحالة']
+        ))
     conn.commit()
     conn.close()
 
-def delete_student_attendance_from_db(scope):
-    """حذف سجلات الطلاب من قاعدة البيانات حسب النطاق"""
+def load_student_attendance_db():
+    conn = sqlite3.connect(DB_FILE)
+    df = pd.read_sql_query("""
+        SELECT 
+            date AS "التاريخ",
+            teacher AS "اسم المعلم",
+            grade AS "الصف",
+            section AS "الفصل",
+            period AS "الحصة",
+            student_id AS "رقم الطالب",
+            student_name AS "اسم الطالب",
+            status AS "الحالة"
+        FROM student_attendance
+        ORDER BY id DESC
+    """, conn)
+    conn.close()
+    return df
+
+def delete_student_attendance_db(scope):
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     today_str = str(date.today())
@@ -90,128 +101,131 @@ def delete_student_attendance_from_db(scope):
     conn.commit()
     conn.close()
 
-def load_teacher_logs_from_db():
-    """تحميل سجلات المعلمين من قاعدة البيانات"""
+def save_teacher_attendance_db(records):
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    c.execute("SELECT date, hijri_date, teacher_name, status, sessions_count, notes FROM teacher_daily_logs")
-    rows = c.fetchall()
-    conn.close()
-    logs = []
-    for r in rows:
-        logs.append({
-            "التاريخ": r[0],
-            "التاريخ_الهجري": r[1],
-            "اسم المعلم": r[2],
-            "الحالة": r[3],
-            "الحصص المرصودة": r[4],
-            "ملاحظات": r[5]
-        })
-    return logs
-
-def save_teacher_logs_to_db(logs, target_date_str=None):
-    """حفظ سجلات المعلمين في قاعدة البيانات فوراً مع استبدال تاريخ اليوم إذا حدد"""
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    if target_date_str:
-        c.execute("DELETE FROM teacher_daily_logs WHERE date = ?", (target_date_str,))
-    for r in logs:
-        c.execute('''
-            INSERT INTO teacher_daily_logs (date, hijri_date, teacher_name, status, sessions_count, notes)
+    for r in records:
+        c.execute("""
+            DELETE FROM teacher_attendance 
+            WHERE date = ? AND teacher_name = ?
+        """, (str(r['التاريخ']), r['اسم المعلم']))
+        
+        c.execute("""
+            INSERT INTO teacher_attendance 
+            (date, hijri_date, teacher_name, status, sessions_count, notes)
             VALUES (?, ?, ?, ?, ?, ?)
-        ''', (r['التاريخ'], r['التاريخ_الهجري'], r['اسم المعلم'], r['الحالة'], r['الحصص المرصودة'], r.get('ملاحظات', '-')))
+        """, (
+            str(r['التاريخ']),
+            r.get('التاريخ_الهجري', ''),
+            r['اسم المعلم'],
+            r['الحالة'],
+            int(r.get('الحصص المرصودة', 0)),
+            r.get('ملاحظات', '-')
+        ))
     conn.commit()
     conn.close()
 
-def delete_teacher_logs_from_db(scope):
-    """حذف سجلات المعلمين من قاعدة البيانات حسب النطاق"""
+def load_teacher_attendance_db():
+    conn = sqlite3.connect(DB_FILE)
+    df = pd.read_sql_query("""
+        SELECT 
+            date AS "التاريخ",
+            hijri_date AS "التاريخ_الهجري",
+            teacher_name AS "اسم المعلم",
+            status AS "الحالة",
+            sessions_count AS "الحصص المرصودة",
+            notes AS "ملاحظات"
+        FROM teacher_attendance
+        ORDER BY id DESC
+    """, conn)
+    conn.close()
+    return df.to_dict('records')
+
+def delete_teacher_attendance_db(scope):
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     today_str = str(date.today())
     if "يومي" in scope:
-        c.execute("DELETE FROM teacher_daily_logs WHERE date = ?", (today_str,))
+        c.execute("DELETE FROM teacher_attendance WHERE date = ?", (today_str,))
     elif "أسبوعي" in scope:
         seven_days_ago = str(date.today() - timedelta(days=7))
-        c.execute("DELETE FROM teacher_daily_logs WHERE date >= ?", (seven_days_ago,))
+        c.execute("DELETE FROM teacher_attendance WHERE date >= ?", (seven_days_ago,))
     else:
-        c.execute("DELETE FROM teacher_daily_logs")
+        c.execute("DELETE FROM teacher_attendance")
     conn.commit()
     conn.close()
 
-# تشغيل التهيئة عند بدء التطبيق
-init_db()
-
 # =========================================================
-# 1. تهيئة حالة القفل بكلمة المرور والشريط العلوي
+# 1. تهيئة حالة القفل بكلمة المرور واختبار النمط
 # =========================================================
-if 'dev_unlocked' not in st.session_state:
+if 'dev_unlocked' not in st.session_state: 
     st.session_state['dev_unlocked'] = False
 
-if not st.session_state['dev_unlocked']:
-    st.markdown("""
-        <style>
-        #MainMenu {visibility: hidden;}
-        header {visibility: hidden;}
-        footer {visibility: hidden;}
-        div[data-testid="stToolbar"] {visibility: hidden;}
-        div[data-testid="stHeader"] {display: none;}
-        </style>
+if not st.session_state['dev_unlocked']: 
+    st.markdown(""" 
+    <style> 
+        #MainMenu {visibility: hidden;} 
+        header {visibility: hidden;} 
+        footer {visibility: hidden;} 
+        div[data-testid="stToolbar"] {visibility: hidden;} 
+        div[data-testid="stHeader"] {display: none;} 
+    </style> 
     """, unsafe_allow_html=True)
 
-with st.sidebar.expander("🔐 فك قفل أدوات التعديل و الكود"):
-    pwd_dev = st.text_input("أدخل كلمة المرور (adam0000):", type="password", key="pwd_dev_input")
-    if st.button("فتح التعديل"):
-        if pwd_dev == "adam0000":
-            st.session_state['dev_unlocked'] = True
-            st.success("تم فك القفل بنجاح! تظهر الآن أيقونات التعديل.")
-            st.rerun()
-        else:
+with st.sidebar.expander("🔐 فك قفل أدوات التعديل و الكود"): 
+    pwd_dev = st.text_input("أدخل كلمة المرور (adam0000):", type="password", key="pwd_dev_input") 
+    if st.button("فتح التعديل"): 
+        if pwd_dev == "adam0000": 
+            st.session_state['dev_unlocked'] = True 
+            st.success("تم فك القفل بنجاح! تظهر الآن أيقونات التعديل.") 
+            st.rerun() 
+        else: 
             st.error("كلمة المرور غير صحيحة!")
 
 # =========================================================
 # 2. إعدادات الصفحة والتصميم المتجاوب (Responsive CSS)
 # =========================================================
-st.set_page_config(
-    page_title="نظام تحضير متوسطة الثغر النموذجية",
-    page_icon="🏫",
-    layout="wide",
-    initial_sidebar_state="expanded"
+st.set_page_config( 
+    page_title="نظام تحضير متوسطة الثغر النموذجية", 
+    page_icon="🏫", 
+    layout="wide", 
+    initial_sidebar_state="expanded" 
 )
 
-st.sidebar.title("⚙️ وضع الشاشة والتصفح")
-display_mode = st.sidebar.radio(
-    "اختر طريقة العرض المناسبة لجهازك:",
-    ["⚡ تلقائي (متجاوب مع الشاشة)", "📱 وضع الجوال (Mobile)", "💻 وضع الكمبيوتر (Desktop)"]
+st.sidebar.title("⚙️ وضع الشاشة والتصفح") 
+display_mode = st.sidebar.radio( 
+    "اختر طريقة العرض المناسبة لجهازك:", 
+    ["⚡ تلقائي (متجاوب مع الشاشة)", "📱 وضع الجوال (Mobile)", "💻 وضع الكمبيوتر (Desktop)"] 
 )
 
 is_mobile = (display_mode == "📱 وضع الجوال (Mobile)")
 
-# CSS التجاوب والتصميم العالي التنسيق
 st.markdown("""
-    <style>
+<style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
     html, body, [class*="css"] {
         font-family: 'Cairo', sans-serif;
+        direction: rtl;
+        text-align: right;
     }
     .student-card {
         background-color: #F8FAFC;
         border: 1px solid #E2E8F0;
         border-radius: 8px;
         padding: 8px 12px;
-        margin-bottom: 4px;
-        display: flex;
-        flex-direction: column;
+        margin-bottom: 5px;
     }
     .student-name {
         font-weight: 700;
         color: #0F2552;
         font-size: 15px;
+        display: block;
     }
     .student-id {
-        font-size: 12px;
         color: #64748B;
+        font-size: 12px;
     }
-    </style>
+</style>
 """, unsafe_allow_html=True)
 
 # =========================================================
@@ -233,9 +247,10 @@ def gregorian_to_hijri_approx(g_date):
 # 4. قوائم المعلمين والطلاب والحصص
 # =========================================================
 TEACHERS_LIST = [
-    "محمد سامي السعيد", "علي محمد معوض", "أحمد عبد الحميد سعيد", "محمد عبد المنعم أبو كيلة",
-    "هيثم رضا عطية", "عماد الدين نصر كرم", "السيد الغريب بدوي", "محمد إبراهيم عبد الرحمن",
-    "أسامة أحمد سالم", "عماد بكر عارف", "إبراهيم علي العتيبي", "عيسى خالد العويس", "زيد بن علي التميمي"
+    "محمد سامي السعيد", "علي محمد معوض", "أحمد عبد الحميد سعيد", 
+    "محمد عبد المنعم أبو كيلة", "هيثم رضا عطية", "عماد الدين نصر كرم", 
+    "السيد الغريب بدوي", "محمد إبراهيم عبد الرحمن", "أسامة أحمد سالم", 
+    "عماد بكر عارف", "إبراهيم علي العتيبي", "عيسى خالد العويس", "زيد بن علي التميمي"
 ]
 
 PERIODS_LIST = [f"الحصة {i}" for i in range(1, 8)]
@@ -451,7 +466,6 @@ def generate_printable_html(df_subset, report_title):
             <td style="color: {status_color}; font-weight: bold;">{row['الحالة']}</td>
         </tr>
         """
-        
     html_code = f"""
     <!DOCTYPE html>
     <html dir="rtl" lang="ar">
@@ -539,8 +553,8 @@ def generate_teacher_range_report_html(teacher_summary_list, start_d, end_d, cal
         absent_cnt = rec.get('عدد مرات الغياب', 0)
         late_cnt = rec.get('عدد مرات التأخر', 0)
         present_cnt = rec.get('عدد أيام الحضور', 0)
-        absent_style = "color: #DC2626; font-weight: bold;" if absent_cnt > 0 else "color: #16A34A;"
-        late_style = "color: #CA8A04; font-weight: bold;" if late_cnt > 0 else "color: #16A34A;"
+        absent_style = f"color: #DC2626; font-weight: bold;" if absent_cnt > 0 else "color: #16A34A;"
+        late_style = f"color: #CA8A04; font-weight: bold;" if late_cnt > 0 else "color: #16A34A;"
         
         rows_html += f"""
         <tr>
@@ -637,43 +651,13 @@ def generate_teacher_range_report_html(teacher_summary_list, start_d, end_d, cal
     return html_code
 
 # =========================================================
-# 6. تهيئة ذاكرة البيانات والمزامنة مع قاعدة البيانات
+# 6. القائمة الجانبية وتصفح الأقسام
 # =========================================================
-if 'attendance_data' not in st.session_state:
-    st.session_state['attendance_data'] = load_student_attendance_from_db()
-
-if 'teacher_daily_logs' not in st.session_state:
-    db_logs = load_teacher_logs_from_db()
-    if db_logs:
-        st.session_state['teacher_daily_logs'] = db_logs
-    else:
-        init_teacher_logs = [
-            {
-                "التاريخ": str(date.today()),
-                "التاريخ_الهجري": gregorian_to_hijri_approx(date.today()),
-                "اسم المعلم": t,
-                "الحالة": "حاضر",
-                "الحصص المرصودة": 0,
-                "ملاحظات": "رصد اعتيادي"
-            } for t in TEACHERS_LIST
-        ]
-        save_teacher_logs_to_db(init_teacher_logs, str(date.today()))
-        st.session_state['teacher_daily_logs'] = init_teacher_logs
-
-if 'teacher_status_db' not in st.session_state:
-    st.session_state['teacher_status_db'] = {t: "حاضر" for t in TEACHERS_LIST}
-
-if 'search_teacher_started' not in st.session_state:
-    st.session_state['search_teacher_started'] = False
-
-# =========================================================
-# 7. القائمة الجانبية
-# =========================================================
-st.sidebar.title("📌 نظام المتابعة")
+st.sidebar.title("📌 نظام المتابعة") 
 role = st.sidebar.radio("اختر لوحة التحكم:", ["👨🏫 حساب المعلم (رصد الحضور)", "👔 حساب الوكيل والمدير (المتابعة والتصدير)"])
 
 # =========================================================
-# 8. واجهة المعلم (رصد حضور الطلاب)
+# 7. واجهة المعلم (رصد حضور الطلاب ورَفعه لقاعدة البيانات)
 # =========================================================
 if role == "👨🏫 حساب المعلم (رصد الحضور)":
     st.subheader("📋 رصد حضور وغياب الطلاب")
@@ -724,9 +708,9 @@ if role == "👨🏫 حساب المعلم (رصد الحضور)":
 
     st.write("---")
     if st.button("💾 حفظ وإرسال كشف الحضور", type="primary", use_container_width=True):
-        new_records = []
+        records_to_save = []
         for st_id, info in attendance_records.items():
-            rec = {
+            records_to_save.append({
                 "التاريخ": str(att_date),
                 "اسم المعلم": teacher_name,
                 "الصف": grade,
@@ -735,16 +719,13 @@ if role == "👨🏫 حساب المعلم (رصد الحضور)":
                 "رقم الطالب": st_id,
                 "اسم الطالب": info['name'],
                 "الحالة": info['status']
-            }
-            new_records.append(rec)
-            st.session_state['attendance_data'].append(rec)
-        
-        # حفظ فور دائم في قاعدة البيانات SQLite
-        save_student_attendance_to_db(new_records)
-        st.success(f"✨ تم حفظ ورصد حضور فصل ({section}) بنجاح وبشكل دائم في قاعدة البيانات بواسطة المعلم {teacher_name}!")
+            })
+        # الحفظ الفوري في قاعدة البيانات الدائمة
+        save_student_attendance_db(records_to_save)
+        st.success(f"✨ تم حفظ وإرسال كشف حضور فصل ({section}) بنجاح لقاعدة البيانات بواسطة المعلم {teacher_name}!")
 
 # =========================================================
-# 9. واجهة الوكيل والمدير (الإحصائيات ورصد وحفظ وتعديل المعلمين)
+# 8. واجهة الوكيل والمدير (المتابعة الإدارية والطباعة والتعديل)
 # =========================================================
 else:
     st.subheader("👔 لوحة الوكيل والمدير (المتابعة الإدارية والطباعة والتعديل)")
@@ -771,9 +752,11 @@ else:
 
         st.write("---")
         
-        df = pd.DataFrame(st.session_state['attendance_data'])
+        # قراءة البيانات الحديثة مباشرة من قاعدة البيانات
+        df = load_student_attendance_db()
+        teacher_logs_db = load_teacher_attendance_db()
         
-        # 🗑️ إدارة حذف تقارير الطلاب وتقارير المعلمين
+        # إدارة حذف تقارير الطلاب وتقارير المعلمين من قاعدة البيانات
         col_del1, col_del2 = st.columns(2)
         
         with col_del1:
@@ -787,21 +770,8 @@ else:
                 conf_st_del = st.checkbox("أؤكد حذف سجلات الطلاب", key="conf_st_del")
                 if st.button("🚨 حذف تقارير الطلاب", type="primary", key="btn_del_st"):
                     if conf_st_del:
-                        today_str = str(date.today())
-                        if "يومي" in del_st_scope:
-                            st.session_state['attendance_data'] = [r for r in st.session_state['attendance_data'] if r.get('التاريخ') != today_str]
-                        elif "أسبوعي" in del_st_scope:
-                            seven_days_ago = date.today() - timedelta(days=7)
-                            st.session_state['attendance_data'] = [
-                                r for r in st.session_state['attendance_data'] 
-                                if datetime.strptime(r.get('التاريخ'), "%Y-%m-%d").date() < seven_days_ago
-                            ]
-                        else:
-                            st.session_state['attendance_data'] = []
-                        
-                        # حذف من قاعدة البيانات الحقيقية
-                        delete_student_attendance_from_db(del_st_scope)
-                        st.success("🗑️ تم تنفيذ عملية الحذف لسجلات الطلاب من الذاكرة وقاعدة البيانات بنجاح!")
+                        delete_student_attendance_db(del_st_scope)
+                        st.success("🗑️ تم تنفيذ عملية الحذف لسجلات الطلاب من قاعدة البيانات بنجاح!")
                         st.rerun()
                     else:
                         st.error("يرجى التأشير على التأكيد أولاً.")
@@ -817,21 +787,8 @@ else:
                 conf_tc_del = st.checkbox("أؤكد حذف سجلات المعلمين", key="conf_tc_del")
                 if st.button("🚨 حذف تقارير المعلمين", type="primary", key="btn_del_tc"):
                     if conf_tc_del:
-                        today_str = str(date.today())
-                        if "يومي" in del_tc_scope:
-                            st.session_state['teacher_daily_logs'] = [r for r in st.session_state['teacher_daily_logs'] if r.get('التاريخ') != today_str]
-                        elif "أسبوعي" in del_tc_scope:
-                            seven_days_ago = date.today() - timedelta(days=7)
-                            st.session_state['teacher_daily_logs'] = [
-                                r for r in st.session_state['teacher_daily_logs'] 
-                                if datetime.strptime(r.get('التاريخ'), "%Y-%m-%d").date() < seven_days_ago
-                            ]
-                        else:
-                            st.session_state['teacher_daily_logs'] = []
-                        
-                        # حذف من قاعدة البيانات الحقيقية
-                        delete_teacher_logs_from_db(del_tc_scope)
-                        st.success("🗑️ تم تنفيذ عملية الحذف لسجلات المعلمين من الذاكرة وقاعدة البيانات بنجاح!")
+                        delete_teacher_attendance_db(del_tc_scope)
+                        st.success("🗑️ تم تنفيذ عملية الحذف لسجلات المعلمين من قاعدة البيانات بنجاح!")
                         st.rerun()
                     else:
                         st.error("يرجى التأشير على التأكيد أولاً.")
@@ -875,7 +832,7 @@ else:
                 df_filtered = df_filtered[df_filtered['الحصة'] == filter_period]
 
         tab_teachers, tab_absent, tab_out, tab_late, tab_all = st.tabs([
-            "👨🏫 إحصائية وتقارير وتعديل المعلمين",
+            "👨‍🏫 إحصائية وتقارير وتعديل المعلمين",
             "🔴 كشف الطلاب الغائبين", 
             "🟠 كشف الطلاب خارج الفصل", 
             "🟡 كشف المتأخرين عن الحصة", 
@@ -883,10 +840,10 @@ else:
         ])
         
         # ---------------------------------------------------------
-        # 1. إحصائيات المعلمين وزر بدء التقرير وعرض غياب وتأخر المعلمين
+        # 1. إحصائيات وتعديل حالة المعلمين
         # ---------------------------------------------------------
         with tab_teachers:
-            st.markdown("### 👨🏫 إحصائية وحالة حضور وغياب كادر المعلمين")
+            st.markdown("### 👨‍🏫 إحصائية وحالة حضور وغياب كادر المعلمين")
             
             teacher_session_counts = {}
             if not df.empty:
@@ -896,12 +853,13 @@ else:
             st.markdown("#### ⚙️ رصد وتحديد حالة المعلمين اليومية:")
             
             teachers_summary_data = {}
+            saved_teachers_dict = {row['اسم المعلم']: row['الحالة'] for row in teacher_logs_db if row['التاريخ'] == str(date.today())}
             
             for t_name in TEACHERS_LIST:
                 c_name_t, c_status_t, c_info_t = st.columns([2.5, 3, 2.5])
                 c_name_t.markdown(f"**{t_name}**")
                 
-                cur_status = st.session_state['teacher_status_db'].get(t_name, "حاضر")
+                cur_status = saved_teachers_dict.get(t_name, "حاضر")
                 new_status = c_status_t.radio(
                     f"حالة المعلم {t_name}:",
                     ["حاضر", "غائب", "متأخر"],
@@ -909,7 +867,6 @@ else:
                     key=f"t_status_{t_name}",
                     horizontal=True
                 )
-                st.session_state['teacher_status_db'][t_name] = new_status
                 
                 sessions_done = teacher_session_counts.get(t_name, 0)
                 c_info_t.write(f"الحصص المرصودة: `{sessions_done} حصة`")
@@ -921,36 +878,29 @@ else:
 
             st.write("---")
             
-            # 💾 زر حفظ وإرسال كشف حضور المعلمين
             if st.button("💾 حفظ وإرسال كشف حضور المعلمين", type="primary", use_container_width=True, key="btn_save_send_teachers"):
                 today_str = str(date.today())
-                st.session_state['teacher_daily_logs'] = [r for r in st.session_state['teacher_daily_logs'] if r.get('التاريخ') != today_str]
-                
-                new_t_logs = []
+                records_tc = []
                 for t_name, info in teachers_summary_data.items():
-                    r = {
+                    records_tc.append({
                         "التاريخ": today_str,
                         "التاريخ_الهجري": gregorian_to_hijri_approx(date.today()),
                         "اسم المعلم": t_name,
                         "الحالة": info['status'],
                         "الحصص المرصودة": info['sessions'],
                         "ملاحظات": "تم الحفظ والإرسال"
-                    }
-                    new_t_logs.append(r)
-                    st.session_state['teacher_daily_logs'].append(r)
-                
-                # حفظ في قاعدة البيانات دائم
-                save_teacher_logs_to_db(new_t_logs, today_str)
-                st.success("✨ تم حفظ وإرسال كشف حضور وغياب المعلمين بنجاح وبشكل دائم في قاعدة البيانات!")
+                    })
+                save_teacher_attendance_db(records_tc)
+                st.success("✨ تم حفظ وإرسال كشف حضور وغياب المعلمين بنجاح في قاعدة البيانات!")
 
             st.write("---")
 
-            # ✏️ قسم أيقونة وتعديل سجلات رصد المعلمين اليومي
+            # تعديل سجلات المعلمين اليومي
             with st.expander("✏️ أيقونة وتعديل حالة المعلمين وتوثيق الملاحظات اليومية"):
                 st.info("💡 يمكنك تعديل حالة أي معلم أو إضافة ملاحظة ثم الضغط على حفظ التعديلات.")
                 edit_date = st.date_input("اختر تاريخ التعديل:", date.today(), key="edit_t_date")
                 
-                today_logs = [r for r in st.session_state['teacher_daily_logs'] if r['التاريخ'] == str(edit_date)]
+                today_logs = [r for r in teacher_logs_db if r['التاريخ'] == str(edit_date)]
                 if not today_logs:
                     today_logs = [
                         {
@@ -986,17 +936,13 @@ else:
                     })
                 
                 if st.button("💾 حفظ وتحديث تعديلات المعلمين", type="primary", key="btn_update_edited_teachers"):
-                    st.session_state['teacher_daily_logs'] = [r for r in st.session_state['teacher_daily_logs'] if r['التاريخ'] != str(edit_date)]
-                    st.session_state['teacher_daily_logs'].extend(updated_logs)
-                    
-                    # حفظ التحديث في قاعدة البيانات
-                    save_teacher_logs_to_db(updated_logs, str(edit_date))
+                    save_teacher_attendance_db(updated_logs)
                     st.success("✨ تم حفظ وتعديل سجلات المعلمين بنجاح في قاعدة البيانات!")
                     st.rerun()
 
             st.write("---")
             
-            # 🖨️ قسم اختيار الفترة الزمنية مع زر (▶️ بدء)
+            # تقرير الفترة الزمنية للمعلمين
             st.markdown("### 🖨️ تقرير ملخص إحصائيات المعلمين للفترة (مع عدد مرات الغياب والتأخر)")
             
             col_r1, col_r2, col_r3, col_r4 = st.columns([2.5, 2.5, 2.5, 2.5])
@@ -1019,7 +965,7 @@ else:
                 
                 for t in TEACHERS_LIST:
                     t_logs = []
-                    for r in st.session_state['teacher_daily_logs']:
+                    for r in teacher_logs_db:
                         if r['اسم المعلم'] == t:
                             try:
                                 r_d = datetime.strptime(r['التاريخ'], "%Y-%m-%d").date()
@@ -1202,16 +1148,12 @@ else:
                 st.info("لا توجد بيانات حضور مرصودة في السجل اليومي.")
 
 # =========================================================
-# 10. الهيكل الإداري وتوقيع المصمم البارز في الشريط الجانبي
+# 9. التذييل والهيكل الإداري
 # =========================================================
-st.sidebar.markdown("---")
 st.sidebar.markdown("""
-<div style="text-align: center; padding: 10px; background-color: #0F2552; color: white; border-radius: 8px;">
-    <h4 style="color: #F59E0B; margin-bottom: 5px;">🏫 متوسطة الثغر النموذجية</h4>
-    <p style="font-size: 12px; margin: 2px;">مدير المدرسة: إبراهيم بن موسى التميمي</p>
-    <p style="font-size: 12px; margin: 2px;">وكيل الشؤون التعليمية: محمد مبروك السيد</p>
-    <p style="font-size: 12px; margin: 2px;">وكيل شؤون الطلاب: صالح بن عبدالله الدعجاني</p>
-    <hr style="border-color: #334155; margin: 8px 0;">
-    <small style="color: #F59E0B; font-weight: bold;">✨ تصميم : محمد سامي السعيد ✨</small>
-</div>
-""", unsafe_allow_html=True)
+---
+**مدير المدرسة:** إبراهيم بن موسى التميمي  
+**وكيل الشؤون التعليمية:** محمد مبروك السيد  
+**وكيل شؤون الطلاب:** صالح بن عبدالله الدعجاني  
+✨ **تصميم وتطوير:**  محمد سامي السعيد ✨
+""")
