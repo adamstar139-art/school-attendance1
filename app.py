@@ -387,14 +387,25 @@ st.markdown("""
 # =========================================================
 def gregorian_to_hijri_approx(g_date):
     try:
-        total_days = (g_date - date(2024, 1, 1)).days
-        h_year = 1445 + int(total_days / 354.36)
-        h_month = 1 + int((total_days % 354.36) / 29.5)
-        if h_month > 12: h_month = 12
-        h_day = 1 + int((total_days % 29.5))
-        if h_day > 30: h_day = 30
+        year, month, day = g_date.year, g_date.month, g_date.day
+        if month < 3:
+            year -= 1
+            month += 12
+        a = year // 100
+        b = 2 - a + (a // 4)
+        jd = int(365.25 * (year + 4716)) + int(30.6001 * (month + 1)) + day + b - 1524
+        
+        l = jd - 1948440 + 10632
+        n = (l - 1) // 10631
+        l = l - 10631 * n + 354
+        j = ((10985 - l) // 5316) * ((50 * l) // 17719) + ((l // 5670)) * ((43 * l) // 15238)
+        l = l - ((30 - j) // 15) * ((17719 * j) // 50) - (j // 16) * ((15238 * j) // 43) + 29
+        h_month = (24 * l) // 709
+        h_day = l - (709 * h_month) // 24
+        h_year = 30 * n + j - 30
+        
         return f"{h_year}/{h_month:02d}/{h_day:02d} هـ"
-    except:
+    except Exception:
         return f"{g_date.strftime('%Y/%m/%d')} هـ"
 
 # =========================================================
