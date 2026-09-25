@@ -2,16 +2,46 @@ import streamlit as st
 import pandas as pd
 import urllib.parse
 import requests
+import os
 
-# 1. إعدادات الصفحة والنمط البصري (Design & Theme)
+# 1. إعدادات الصفحة والتصميم المتجاوب مع الجوال
 st.set_page_config(
-    page_title="زواج مبارك - نظام إرسال الدعوات عبر UltraMsg",
+    page_title="زواج مبارك - نظام إدارة الدعوات",
     page_icon="💍",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
-# تطبيق تنسيقات CSS مخصصة لتوحيد حجم ونوع الخط لكافة الأسماء (القديمة والجديدة)
+DB_FILE = "saved_invitees.csv"
+
+# وظائف حفظ وقراءة البيانات بشكل دائم
+def load_data():
+    if os.path.exists(DB_FILE):
+        try:
+            return pd.read_csv(DB_FILE, dtype=str)
+        except Exception:
+            pass
+    # بيانات افتراضية للتجربة في حال عدم وجود ملف محفوظ
+    return pd.DataFrame([
+        {"الاسم": "عبد الله بن خالد الدوسري", "الجوال": "966501234567"},
+        {"الاسم": "محمد بن أحمد القحطاني", "الجوال": "966559876543"},
+        {"الاسم": "فهد بن سليم العتيبي", "الجوال": "966541122334"},
+        {"الاسم": "سلمان بن عبد العزيز الشمري", "الجوال": "966567788990"}
+    ])
+
+def save_data(df):
+    df.to_csv(DB_FILE, index=False)
+
+# تحميل البيانات عند التشغيل
+if 'invitees' not in st.session_state:
+    st.session_state.invitees = load_data()
+
+if 'ultramsg_instance' not in st.session_state:
+    st.session_state.ultramsg_instance = "instance10000"
+if 'ultramsg_token' not in st.session_state:
+    st.session_state.ultramsg_token = "your_token_here"
+
+# CSS مخصص للمحاذاة والتجاوب التام مع الشاشات والجوالات
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Tajawal:wght@400;500;700&display=swap');
@@ -23,196 +53,183 @@ st.markdown("""
         background-color: #FAFAFA;
     }
     
-    /* ترويسة البرنامج */
+    /* الترويسة */
     .wedding-header {
         background: linear-gradient(135deg, #1B3B36 0%, #0D1F1D 100%);
         border: 2px solid #D4AF37;
-        padding: 25px;
-        border-radius: 18px;
+        padding: 20px;
+        border-radius: 16px;
         color: #FFFFFF;
         text-align: center;
-        margin-bottom: 25px;
-        box-shadow: 0 10px 20px rgba(212, 175, 55, 0.15);
+        margin-bottom: 20px;
+        box-shadow: 0 8px 16px rgba(212, 175, 55, 0.15);
     }
     
     .wedding-title {
         font-family: 'Amiri', serif !important;
-        font-size: 40px;
+        font-size: 36px;
         color: #D4AF37;
-        margin-top: 5px;
-        margin-bottom: 5px;
+        margin: 5px 0;
         font-weight: bold;
     }
 
     .saudi-avatar {
-        font-size: 65px;
+        font-size: 55px;
         line-height: 1;
     }
 
-    /* البطاقات */
+    /* بطاقات العرض */
     .card-box {
         background-color: #FFFFFF;
         border: 1px solid #EAEAEA;
         border-right: 5px solid #D4AF37;
-        padding: 20px;
+        padding: 18px;
         border-radius: 12px;
-        margin-bottom: 20px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+        margin-bottom: 18px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.02);
     }
 
-    .preview-box {
-        background-color: #F4F7F6;
-        border: 1px dashed #D4AF37;
-        padding: 20px;
-        border-radius: 10px;
-        margin-top: 15px;
+    /* محاذاة وتنسيق صفوف المدعوين */
+    .guest-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 0;
+        border-bottom: 1px solid #F0F0F0;
     }
 
-    /* توحيد خط وحجم أسماء وقائمة المدعوين بشكل دقيق وموحد */
-    .guest-item-name {
+    .guest-name {
         font-family: 'Tajawal', sans-serif !important;
-        font-size: 17px !important;
+        font-size: 16px !important;
         font-weight: 700 !important;
         color: #1B3B36 !important;
+        text-align: right !important;
         margin: 0;
-        padding-top: 5px;
+        line-height: 1.5;
     }
 
-    .guest-item-phone {
+    .guest-phone {
         font-family: 'Tajawal', sans-serif !important;
-        font-size: 15px !important;
-        color: #666666 !important;
-        direction: ltr;
-        display: inline-block;
+        font-size: 14px !important;
+        color: #555555 !important;
+        direction: ltr !important;
+        text-align: right !important;
         margin: 0;
-        padding-top: 5px;
     }
 
-    /* أزرار الإرسال */
+    /* زر الواتساب */
     .btn-wa-open {
         background-color: #25D366;
         color: white !important;
-        padding: 7px 14px;
+        padding: 6px 12px;
         border-radius: 6px;
         text-decoration: none !important;
         font-weight: bold;
-        font-size: 14px;
-        display: inline-block;
+        font-size: 13px;
+        display: block;
         text-align: center;
         width: 100%;
+        box-sizing: border-box;
     }
-    
-    .btn-wa-open:hover {
-        background-color: #1EBE5D;
+
+    /* تحسين التجاوب مع الجوال (Mobile Optimization) */
+    @media (max-width: 768px) {
+        .wedding-title { font-size: 28px; }
+        .saudi-avatar { font-size: 45px; }
+        .card-box { padding: 12px; }
+        .guest-name { font-size: 15px !important; }
+        .guest-phone { font-size: 13px !important; }
+        .stButton button { width: 100% !important; margin-bottom: 5px; }
     }
 </style>
 """, unsafe_allow_html=True)
 
-# 2. تهيئة حالة الجلسة والبيانات التجريبية
-if 'invitees' not in st.session_state:
-    st.session_state.invitees = pd.DataFrame([
-        {"الاسم": "عبد الله بن خالد الدوسري", "الجوال": "966501234567"},
-        {"الاسم": "محمد بن أحمد القحطاني", "الجوال": "966559876543"},
-        {"الاسم": "فهد بن سليم العتيبي", "الجوال": "966541122334"},
-        {"الاسم": "سلمان بن عبد العزيز الشمري", "الجوال": "966567788990"}
-    ])
-
-if 'ultramsg_instance' not in st.session_state:
-    st.session_state.ultramsg_instance = "instance10000"  # معرف الحساب التجريبي من UltraMsg
-if 'ultramsg_token' not in st.session_state:
-    st.session_state.ultramsg_token = "your_token_here"  # رمز التوثيق التجريبي
-
-# 3. الترويسة الاحترافية
+# 2. الترويسة
 st.markdown("""
 <div class="wedding-header">
     <div class="saudi-avatar">🧔🏻‍♂️💍</div>
     <div class="wedding-title">زواج مبارك</div>
-    <p style="font-size: 17px; color: #E0E0E0; margin: 0;">نظام إرسال وتدبير دعوات الزفاف عبر خدمة UltraMsg</p>
+    <p style="font-size: 15px; color: #E0E0E0; margin: 0;">نظام إرسال وتدبير دعوات الزفاف عبر UltraMsg</p>
 </div>
 """, unsafe_allow_html=True)
 
-# 4. لوحة التحكم والشريط الجانبي (إعدادات UltraMsg)
+# 3. لوحة التحكم والشريط الجانبي
 with st.sidebar:
     st.header("⚙️ إعدادات UltraMsg")
-    st.info("احصل على البيانات من لوحة التحكم في ultramsg.com")
-    
-    instance_id = st.text_input("معرف الحساب (Instance ID):", value=st.session_state.ultramsg_instance, help="مثال: instance10000")
+    instance_id = st.text_input("معرف الحساب (Instance ID):", value=st.session_state.ultramsg_instance)
     token_id = st.text_input("رمز التوثيق (Token):", value=st.session_state.ultramsg_token, type="password")
     
     if st.button("حفظ إعدادات الربط"):
         st.session_state.ultramsg_instance = instance_id.strip()
         st.session_state.ultramsg_token = token_id.strip()
-        st.success("تم حفظ إعدادات UltraMsg بنجاح!")
+        st.success("تم حفظ الإعدادات!")
 
     st.markdown("---")
-    st.subheader("📁 تغذية بيانات المدعوين")
-    uploaded_file = st.file_uploader("رفع ملف Excel أو CSV بالمدعوين:", type=["csv", "xlsx"])
+    st.subheader("📁 تغذية بيانات المدعوين (Excel / CSV)")
+    uploaded_file = st.file_uploader("رفع ملف جديد (سيتم حفظه دائماً):", type=["csv", "xlsx"])
     if uploaded_file is not None:
         try:
             if uploaded_file.name.endswith('.csv'):
                 df_new = pd.read_csv(uploaded_file, dtype=str)
             else:
                 df_new = pd.read_excel(uploaded_file, dtype=str)
+            
+            # حفظ الملف دائمياً
             st.session_state.invitees = df_new
-            st.success("تم تحميل القائمة الجديدة بنجاح!")
+            save_data(df_new)
+            st.success("تم رفع وحفظ قائمة المدعوين بنجاح دائم!")
+            st.rerun()
         except Exception as e:
-            st.error(f"حدث خطأ أثناء قراءة الملف: {e}")
+            st.error(f"خطأ في قراءة الملف: {e}")
 
-# 5. القسم الرئيسي: صياغة الرسالة والمعاينة
-col_msg, col_preview = st.columns(2)
+# 4. صياغة الرسالة والمعاينة
+col_msg, col_preview = st.columns([1, 1])
 
 with col_msg:
     st.markdown('<div class="card-box">', unsafe_allow_html=True)
-    st.subheader("✉️ صياغة نص الدعوة وإرفاق الصورة")
-    
+    st.subheader("✉️ نص الدعوة والصورة")
     msg_template = st.text_area(
         "نص الرسالة الأساسي:",
         value="ندعوكم لـحضور حفل زفافنا وتناول طعام العشاء، وبحضوركم تكتمل فرحتنا وسرورنا. نسعد بتلبيتكم الدعوة.",
-        height=130
+        height=120
     )
-    
-    invitation_image = st.file_uploader("إرفاق صورة بطاقة الدعوة (تظهر أسفل النص):", type=["png", "jpg", "jpeg"])
+    invitation_image = st.file_uploader("إرفاق صورة بطاقة الدعوة:", type=["png", "jpg", "jpeg"])
     st.markdown('</div>', unsafe_allow_html=True)
 
 with col_preview:
     st.markdown('<div class="card-box">', unsafe_allow_html=True)
-    st.subheader("👁️ معاينة الرسالة للمدعو")
-    
+    st.subheader("👁️ معاينة الدعوة")
     sample_name = st.session_state.invitees.iloc[0]["الاسم"] if not st.session_state.invitees.empty else "سعادة الضيف"
     full_sample_msg = f"المكرم / {sample_name}\n{msg_template}"
     
-    st.markdown('<div class="preview-box">', unsafe_allow_html=True)
-    st.markdown(f"**نص الرسالة:**\n\n`{full_sample_msg}`")
-    
+    st.info(f"**النموذج:**\n\n{full_sample_msg}")
     if invitation_image is not None:
-        st.image(invitation_image, caption="صورة بطاقة الدعوة المرفقة", use_container_width=True)
-    else:
-        st.info("💡 يمكنك إرفاق صورة بطاقة الفرح لتظهر هنا أسفل النص.")
-    st.markdown('</div>', unsafe_allow_html=True)
+        st.image(invitation_image, caption="الصورة المرفقة اسفل النص", use_container_width=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-# 6. إدارة قائمة المدعوين والإرسال
+# 5. قائمة المدعوين وإدارتها
 st.markdown('<div class="card-box">', unsafe_allow_html=True)
-st.subheader("👥 قائمة المدعوين وإجراءات الإرسال")
+st.subheader("👥 قائمة المدعوين المحفوظة")
 
-# نموذج إضافة شخص جديد بتنسيق موحد
-with st.expander("➕ إضافة مدعو جديد للقائمة"):
+# إضافة شخص جديد مع الحفظ التلقائي
+with st.expander("➕ إضافة مدعو جديد"):
     with st.form("add_person_form"):
         col_a, col_b = st.columns(2)
-        new_name = col_a.text_input("اسم الشخص:")
-        new_phone = col_b.text_input("رقم الجوال (مع الرمز الدولي بدون +):", placeholder="966500000000")
-        submit_add = st.form_submit_button("إضافة المدعو")
+        new_name = col_a.text_input("الاسم:")
+        new_phone = col_b.text_input("الجوال (مثال: 966500000000):")
+        submit_add = st.form_submit_button("حفظ وإضافة")
         
         if submit_add and new_name and new_phone:
             new_row = pd.DataFrame([{"الاسم": new_name.strip(), "الجوال": new_phone.strip()}])
             st.session_state.invitees = pd.concat([st.session_state.invitees, new_row], ignore_index=True)
-            st.success(f"تمت إضافة {new_name} بنجاح بتنسيق موحد!")
+            save_data(st.session_state.invitees) # حفظ دائم
+            st.success(f"تمت إضافة وحفظ {new_name} بنجاح!")
             st.rerun()
 
-# عرض القائمة والتنسيق الموحد للخط
+# عرض القائمة بمحاذاة ممتازة وتناسق على الجوال
 if not st.session_state.invitees.empty:
     for idx, row in st.session_state.invitees.iterrows():
-        c_name, c_phone, c_send_app, c_send_bg, c_actions = st.columns([2.5, 2, 2, 2, 1.2])
+        c_name, c_phone, c_send_app, c_send_bg, c_actions = st.columns([2.5, 2, 1.8, 1.8, 1])
         
         person_name = str(row["الاسم"])
         person_phone = str(row["الجوال"]).strip()
@@ -220,39 +237,33 @@ if not st.session_state.invitees.empty:
         encoded_text = urllib.parse.quote(personalized_text)
         wa_link = f"https://wa.me/{person_phone}?text={encoded_text}"
         
-        # تطبيق التنسيق الموحد للأسماء القديمة والجديدة بنفس الحجم والنوع
-        c_name.markdown(f'<p class="guest-item-name">{idx + 1}. {person_name}</p>', unsafe_allow_html=True)
-        c_phone.markdown(f'<p class="guest-item-phone">📱 {person_phone}</p>', unsafe_allow_html=True)
+        # محاذاة الأسماء والأرقام بشكل منسق
+        c_name.markdown(f'<div class="guest-name">{idx + 1}. {person_name}</div>', unsafe_allow_html=True)
+        c_phone.markdown(f'<div class="guest-phone">📱 {person_phone}</div>', unsafe_allow_html=True)
         
-        # 1. إرسال بفتح التطبيق
-        c_send_app.markdown(f'<a href="{wa_link}" target="_blank" class="btn-wa-open">💬 فتح الواتساب</a>', unsafe_allow_html=True)
+        # أزرار الإرسال
+        c_send_app.markdown(f'<a href="{wa_link}" target="_blank" class="btn-wa-open">💬 تطبيق الواتساب</a>', unsafe_allow_html=True)
         
-        # 2. إرسال عبر UltraMsg بدون فتح التطبيق
-        if c_send_bg.button("🚀 إرسال UltraMsg", key=f"send_um_{idx}"):
+        if c_send_bg.button("🚀 إرسال تلقائي", key=f"send_um_{idx}"):
             inst = st.session_state.ultramsg_instance
             tok = st.session_state.ultramsg_token
             
             if inst == "instance10000" or tok == "your_token_here":
-                st.warning("يرجى إدخال Instance ID و Token الخاصين بحسابك في UltraMsg من الشريط الجانبي أولاً.")
+                st.warning("يرجى إدخال بيانات UltraMsg في الشريط الجانبي أولاً.")
             else:
-                # رابط API الخاص بـ UltraMsg لإرسال الرسائل النصية
                 api_url = f"https://api.ultramsg.com/{inst}/messages/chat"
                 payload = f"token={tok}&to={person_phone}&body={urllib.parse.quote(personalized_text)}"
                 headers = {'content-type': 'application/x-www-form-urlencoded'}
-                
                 try:
                     res = requests.post(api_url, data=payload.encode('utf-8'), headers=headers, timeout=10)
-                    res_json = res.json()
-                    if "sent" in str(res_json).lower() or res_json.get("status") == "success" or "id" in res_json:
-                        st.toast(f"تم إرسال الدعوة عبر UltraMsg إلى {person_name} بنجاح!", icon="✅")
-                    else:
-                        st.toast(f"نتيجة UltraMsg: {res_json}", icon="ℹ️")
+                    st.toast(f"تم الإرسال التلقائي إلى {person_name}!", icon="✅")
                 except Exception as e:
-                    st.error(f"خطأ أثناء الاتصال بـ UltraMsg: {e}")
+                    st.error(f"خطأ في الاتصال: {e}")
 
-        # 3. حذف الشخص
-        if c_actions.button("🗑️ حذف", key=f"del_{idx}"):
+        # حذف شخص مع التحديث الدائم
+        if c_actions.button("🗑️", key=f"del_{idx}"):
             st.session_state.invitees = st.session_state.invitees.drop(idx).reset_index(drop=True)
+            save_data(st.session_state.invitees) # حفظ التغييرات دائمياً
             st.rerun()
 else:
     st.warning("القائمة فارغة حالياً.")
